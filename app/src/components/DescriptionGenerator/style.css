@@ -1,0 +1,97 @@
+.wacdmg-description-container {
+  margin: 10px 0px;
+}
+
+.wacdmg-generator-container {
+  background: #fff;
+  border: 1px solid #ccd0d4;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 24px;
+  font-family: var(--wp--preset--font-family--system, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+  box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+}
+
+/* .wacdmg-generator-prompt-container {
+  margin-bottom: 16px;
+} */
+
+.wacdmg-prompt-input-wrapper {
+  width: 100%;
+}
+
+.wacdmg-generator-prompt {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  /* margin-bottom: 16px; */
+  flex-wrap: wrap;
+}
+
+.wacdmg-generate-button,
+.wacdmg-improve-button,
+.wacdmg-improve-prompt-button,
+.wacdmg-add-prompt,
+.wacdmg-submit-prompt,
+.wacdmg-cancel-prompt,
+.wacdmg-clear-button,
+.wacdmg-insert-button {
+  background: #2271b1;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-weight: 500;
+  box-shadow: 0 1px 0 #ccd0d4;
+  margin-right: 8px;
+}
+
+.wacdmg-generate-button:hover,
+.wacdmg-add-prompt:hover,
+.wacdmg-submit-prompt:hover,
+.wacdmg-cancel-prompt:hover,
+.wacdmg-clear-button:hover,
+.wacdmg-insert-button:hover {
+  background: #135e96;
+}
+
+.wacdmg-prompt-input {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.wacdmg-prompt-textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccd0d4;
+  border-radius: 3px;
+  font-size: 14px;
+  background: #f6f7f7;
+  color: #23282d;
+}
+
+.wacdmg-description-output {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f6f7f7;
+  border: 1px solid #e2e4e7;
+  border-radius: 3px;
+}
+
+.wacdmg-description-text {
+  margin-top: 12px;
+  font-size: 15px;
+  color: #23282d;
+  line-height: 1.6;
+  background: #fff;
+  padding: 12px;
+  border-radius: 3px;
+  border: 1px solid #e2e4e7;
+  word-break: break-word;
+}

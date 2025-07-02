@@ -1,0 +1,162 @@
+/* Main form container */
+.wacdmg-form {
+  max-width: 850px;
+  background: #fff;
+  border: 1px solid #ccd0d4;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+  margin-top: 20px;
+  padding: 20px;
+}
+
+/* Form titles */
+.wacdmg-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 20px;
+  padding: 0;
+  line-height: 1.4;
+  color: #1d2327;
+}
+
+/* Form sections */
+.wacdmg-form-section {
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #dcdcde;
+}
+
+.wacdmg-form-section h3 {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 15px;
+  color: #1d2327;
+  text-transform: uppercase;
+}
+
+/* Form rows - label + input */
+.wacdmg-form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.wacdmg-label {
+  width: 150px;
+  font-weight: 500;
+  color: #1d2327;
+  padding-right: 10px;
+}
+
+.wacdmg-input,
+.wacdmg-select {
+  flex: 1;
+  max-width: 400px;
+  padding: 6px 8px;
+  border: 1px solid #8c8f94;
+  border-radius: 3px;
+  background-color: #fff;
+  color: #2c3338;
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 30px;
+}
+
+.wacdmg-input:focus,
+.wacdmg-select:focus {
+  border-color: #2271b1;
+  box-shadow: 0 0 0 1px #2271b1;
+  outline: 2px solid transparent;
+}
+
+/* Provider radio buttons */
+.wacdmg-provider-group {
+  display: flex;
+  gap: 20px;
+}
+
+.wacdmg-provider-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.wacdmg-radio {
+  margin: 0;
+}
+
+/* Form actions */
+.wacdmg-actions {
+  margin-top: 20px;
+}
+
+.wacdmg-button {
+  background: #2271b1;
+  border: 1px solid #2271b1;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 3px;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.wacdmg-button:hover {
+  background: #135e96;
+}
+
+.wacdmg-button:disabled {
+  background: #a7aaad;
+  border-color: #a7aaad;
+  cursor: default;
+}
+
+/* Loading spinner */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* Messages */
+.wacdmg-message {
+  padding: 10px 12px;
+  margin-top: 15px;
+  border-left: 4px solid;
+  background: #f6f7f7;
+}
+
+.wacdmg-message.success {
+  border-left-color: #00a32a;
+}
+
+.wacdmg-message.error {
+  border-left-color: #d63638;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+  .wacdmg-form-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .wacdmg-label {
+    width: 100%;
+    margin-bottom: 5px;
+  }
+  
+  .wacdmg-input,
+  .wacdmg-select {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .wacdmg-provider-group {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
