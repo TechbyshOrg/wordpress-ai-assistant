@@ -1,16 +1,16 @@
 <?php
-/**
- * Plugin Name: WP AI Content Description Meta Generator
- * Plugin URI: https://yourwebsite.com/wp-ai-content-description-meta-generator
- * Description: Automatically generate SEO-friendly content descriptions and meta tags using AI for posts, pages, or custom post types.
- * Version: 1.0.0
- * Author: Your Name or Company
- * Author URI: https://yourwebsite.com
- * License: GPLv2 or later
- * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: wp-ai-content-description-meta-generator
- * Domain Path: /languages
- */
+/*
+Plugin Name: AI Assistant for WooCommerce and WordPress
+Plugin URI: https://wordpress.org/plugins/ai-assistant-woocommerce-wordpress/
+Description: Generate AI-powered product descriptions, meta tags, and more directly within WP and WooCommerce.
+Version: 1.0.0
+Author: Techbysh
+Author URI: https://techbysh.com
+Text Domain: wacdmg-ai-assistant-woocommerce-wordpress
+Domain Path: /languages
+License: GPLv2 or later
+*/
+
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly. 
