@@ -18,21 +18,21 @@ jobs:
 
       - name: Prepare release folder
         run: |
-          mkdir wacdmg-ai-assistant-woocommerce-wordpress
-          rsync -av ./ wacdmg-ai-assistant-woocommerce-wordpress/ \
-            --exclude='wacdmg-ai-assistant-woocommerce-wordpress' \
-            --exclude='react-admin' \
+          mkdir wacdmg-ai-content-assistant
+          rsync -av ./ wacdmg-ai-content-assistant/ \
+            --exclude='wacdmg-ai-content-assistant' \
+            --exclude='app' \
             --exclude='.git' \
             --exclude='.gitignore' \
             --exclude='.gitlab-ci.yml' \
             --exclude='.github' \
-            --exclude='wacdmg-ai-assistant-woocommerce-wordpress_*.zip'
+            --exclude='wacdmg-ai-content-assistant_*.zip'
 
       - name: Create zip file
         run: |
           TAG_NAME=${GITHUB_REF##*/}
-          ZIP_NAME="wacdmg-ai-assistant-woocommerce-wordpress_${TAG_NAME}.zip"
-          zip -r "$ZIP_NAME" wacdmg-ai-assistant-woocommerce-wordpress
+          ZIP_NAME="wacdmg-ai-content-assistant_${TAG_NAME}.zip"
+          zip -r "$ZIP_NAME" wacdmg-ai-content-assistant
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
 
       - name: Upload release

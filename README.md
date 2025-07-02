@@ -1,7 +1,7 @@
-=== AI Assistant for WooCommerce and WordPress ===
+=== Smart AI Assistant for Content Creation ===
 Contributors: techbysh
 Donate link: https://techbysh.com/donate
-Tags: ai, woo-commerce, content-generator, seo, openai, ai-assistant
+Tags: ai, content generation, openai, assistant, seo
 Requires at least: 6.0
 Tested up to: 6.5
 Requires PHP: 7.4
@@ -9,91 +9,87 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Generate high-quality product descriptions, post summaries, meta tags, and more using AI directly in your WordPress and WooCommerce dashboard.
+Smart AI content generator for WordPress — create product descriptions, blog posts, and SEO meta with a click.
 
 == Description ==
-**AI Assistant for WooCommerce and WordPress** by **Techbysh** leverages the latest AI models to help store owners, bloggers, and agencies automate content creation. From GPT-powered product copy to SEO optimized meta descriptions, it saves time and enhances content consistency.
 
----
+**Smart AI Assistant for Content Creation** by **Techbysh** is a lightweight, high-performance plugin for WordPress websites. Whether you're running a WooCommerce store, a blog, or a business site, this assistant can help generate high-quality content powered by OpenAI’s GPT models.
 
-### 🎯 Features
-* Generate single or bulk WooCommerce product titles, descriptions, and attributes  
-* Auto-create SEO meta titles, descriptions, and alt tags  
-* Supports Gutenberg & Classic Editor  
-* Custom prompt templates for content tuning  
-* AJAX/REST-powered for fast, non-blocking UI  
-* Lightweight—minimal performance impact  
-* GDPR-friendly—no data storage, private API calls
+✨ Supports WordPress posts, pages, and WooCommerce products  
+✨ Creates SEO meta titles, meta descriptions, and alt text  
+✨ Fully integrated with Gutenberg, Classic Editor, and Elementor  
+✨ Uses OpenAI API with customizable prompt templates  
+✨ No user data stored — fully GDPR-friendly  
 
----
+Ideal for content creators, SEO professionals, eCommerce store owners, and agencies managing high-volume websites.
 
-### 📦 Installation
-1. Upload `ai-assistant-woocommerce-wordpress` folder to `/wp-content/plugins/`  
-2. Activate via **Dashboard → Plugins**  
-3. Visit **AI Assistant → Settings** to enter your OpenAI API key and customize prompts  
+== Features ==
 
----
+- AI-generated WooCommerce product descriptions & attributes  
+- Blog post intros, summaries, and content writing  
+- SEO metadata: meta title, meta description, alt tags  
+- Prompt template system for creative control  
+- Works inside WordPress editor (posts, products, pages)  
+- Supports Classic Editor, Gutenberg, and page builders  
+- AJAX-powered UI — responsive and smooth  
+- Lightweight, minimal performance impact  
+- GDPR-compliant — no user data stored or tracked
 
-### ❓ FAQ
+== Installation ==
+
+1. Upload the plugin folder `smart-ai-assistant-content` to `/wp-content/plugins/`
+2. Activate via **Plugins → Installed Plugins** in your WordPress dashboard
+3. Go to **AI Assistant → Settings** to enter your OpenAI API key
+4. Start generating content in your editor or product pages
+
+== Screenshots ==
+
+1. AI Assistant inside WooCommerce product editor
+2. Bulk generation panel
+3. SEO meta generation for a blog post
+4. Prompt customization settings
+
+== Frequently Asked Questions ==
+
 = Do I need an OpenAI account? =  
-Yes, an API key is required. You get a free tier/account from OpenAI for usage.
+Yes, you need an OpenAI API key to use the plugin. You can get it from [https://platform.openai.com](https://platform.openai.com).
 
-= Can this work with WooCommerce? =  
-Yes—fully generates product titles, descriptions, and meta fields.
+= Is this compatible with WooCommerce? =  
+Yes. It works inside WooCommerce product editor for title, short and long description generation, and more.
 
-= Are prompts customizable? =  
-Absolutely—you can design templates for product, page, or SEO content.
+= Can I use it for WordPress posts and pages? =  
+Absolutely. The assistant integrates with the post/page editors and works with most custom post types.
 
-= Does it integrate with page builders like Elementor? =  
-Yes—generated content can be manually placed in any editor.
+= Can I modify the AI prompts? =  
+Yes, the plugin includes a flexible prompt template system for tailored outputs.
 
-= How is data handled? =  
-No sensitive data is stored. All generation uses live calls to the OpenAI API.
+= Is this GDPR-compliant? =  
+Yes. No personal or site data is stored. All content is generated in real-time through OpenAI API.
 
----
+== Changelog ==
 
-### 📸 Screenshots
-1. Product AI generator in WooCommerce  
-2. Bulk generation screen  
-3. Settings panel with prompt templates  
-4. SEO meta generation in post editor
+= 1.0.0 =
+* Initial release
+* WooCommerce product support
+* SEO metadata generation
+* Prompt templates and customization
+* Works with Gutenberg, Classic Editor, and Elementor
 
----
+== Upgrade Notice ==
 
-### 🧱 Changelog
-= 1.0.0 =  
-* Initial release  
-* WooCommerce product AI generation  
-* WordPress post/page AI meta content  
-* OpenAI integration via REST
+= 1.0.0 =
+First stable release. Ensure your OpenAI API key is set under plugin settings before updating.
 
----
+== Roadmap ==
 
-### 🛠 Upgrade Notice
-= 1.0.0 =  
-First official stable release—ensure OpenAI credentials are configured.
+- AI image generation & alt-text
+- Chat assistant (AI Q&A for content or SEO)
+- Scheduled content creation
+- Keyword suggestion integration
+- Multilingual output support
 
----
+== Support ==
 
-### 🚀 Next Release Roadmap
-* Scheduled content auto-generation  
-* Multi-language support  
-* WooCommerce bulk updater UI  
-* Basic analytics dashboard  
-* Expandable AI-generated template presets  
-
----
-
-### ❤️ Support & Contribution
-• Report issues or request features: https://techbysh.com/support  
-• View source or contribute: (optionally add GitHub link)  
-• Donate to support development: https://techbysh.com/donate  
-
----
-
-### 🧠 Notes on Best Practices
-- Aligned with 2025 WordPress repository guidelines—header fields parsed from main plugin and readme :contentReference[oaicite:2]{index=2}  
-- Focused on concise, helpful documentation—not spam, under 10 KB :contentReference[oaicite:3]{index=3}  
-- SEO-minded headers, tags, FAQs to improve search matching :contentReference[oaicite:4]{index=4}  
-- GDPR compliance and prompt customization highlighted, per security best practices :contentReference[oaicite:5]{index=5}  
-
+For help, visit: https://techbysh.com/support  
+Donate to support development: https://techbysh.com/donate  
+GitHub repo (optional): https://github.com/techbysh/smart-ai-assistant-content

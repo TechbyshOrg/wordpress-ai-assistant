@@ -1,14 +1,16 @@
 <?php
+<?php
 /*
-Plugin Name: AI Assistant for WooCommerce and WordPress
-Plugin URI: https://wordpress.org/plugins/ai-assistant-woocommerce-wordpress/
-Description: Generate AI-powered product descriptions, meta tags, and more directly within WP and WooCommerce.
+Plugin Name: Smart AI Assistant for Content Creation
+Plugin URI: https://wordpress.org/plugins/smart-ai-assistant-content/
+Description: Smart AI content generator for WordPress and WooCommerce — create product descriptions, blog posts, and SEO meta with a click.
 Version: 1.0.0
 Author: Techbysh
 Author URI: https://techbysh.com
-Text Domain: wacdmg-ai-assistant-woocommerce-wordpress
-Domain Path: /languages
 License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: wacdmg-ai-content-assistant
+Domain Path: /languages
 */
 
 
