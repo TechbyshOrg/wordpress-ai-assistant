@@ -158,7 +158,7 @@ function addCustomInspectorControls(BlockEdit) {
 
         // Handler to reuse previous content
         const handleReusePrevious = () => {
-            if (!window.confirm(__('Are you sure you want to reuse the previous content? This will replace the current content with the previous one.', 'text-domain'))) {
+            if (!window.confirm(__('Are you sure you want to reuse the previous content? This will replace the current content with the previous one.', 'wacdmg-ai-content-assistant'))) {
                 return;
             }
             setAttributes({ content: previousContentRef.current });
@@ -176,14 +176,14 @@ function addCustomInspectorControls(BlockEdit) {
             <Fragment>
                 <InspectorControls>
                     <PanelBody
-                        title={__('AI Content Generator', 'text-domain')}
+                        title={__('AI Content Generator', 'wacdmg-ai-content-assistant')}
                         initialOpen={true}
                         icon="edit"
                     >
                         <SelectControl
-                            label={__('Generation Type', 'text-domain')}
+                            label={__('Generation Type', 'wacdmg-ai-content-assistant')}
                             value={generationType}
-                            help={__('Choose how you want to generate content', 'text-domain')}
+                            help={__('Choose how you want to generate content', 'wacdmg-ai-content-assistant')}
                             options={[
                                 { label: 'Select generation type...', value: '' },
                                 { label: 'Generate from block name', value: 'from_name' },
@@ -196,9 +196,9 @@ function addCustomInspectorControls(BlockEdit) {
 
                         {(generationType === 'custom_prompt' || generationType === 'improve_with_prompt') && (
                             <TextareaControl
-                                label={__('Custom Prompt', 'text-domain')}
-                                help={__('Enter specific instructions for content generation', 'text-domain')}
-                                placeholder={__('e.g., "Write a professional introduction about our company"', 'text-domain')}
+                                label={__('Custom Prompt', 'wacdmg-ai-content-assistant')}
+                                help={__('Enter specific instructions for content generation', 'wacdmg-ai-content-assistant')}
+                                placeholder={__('e.g., "Write a professional introduction about our company"', 'wacdmg-ai-content-assistant')}
                                 value={customPrompt}
                                 rows={4}
                                 onChange={(value) => setAttributes({ customPrompt: value })}
@@ -206,15 +206,15 @@ function addCustomInspectorControls(BlockEdit) {
                         )}
 
                         <ToggleControl
-                            label={__('Enable Word Count', 'text-domain')}
-                            help={__('Set a specific word count for the generated content', 'text-domain')}
+                            label={__('Enable Word Count', 'wacdmg-ai-content-assistant')}
+                            help={__('Set a specific word count for the generated content', 'wacdmg-ai-content-assistant')}
                             checked={enableWordCount}
                             onChange={(value) => setAttributes({ enableWordCount: value })}
                         />
 
                         {enableWordCount && (
                             <TextControl
-                                label={__('Word Count', 'text-domain')}
+                                label={__('Word Count', 'wacdmg-ai-content-assistant')}
                                 type="number"
                                 value={wordCount}
                                 min={50}
@@ -230,7 +230,7 @@ function addCustomInspectorControls(BlockEdit) {
                                 disabled={!generationType || 
                                     ((generationType === 'custom_prompt' || generationType === 'improve_with_prompt') && !customPrompt)}
                             >
-                                {__('Generate Content', 'text-domain')}
+                                {__('Generate Content', 'wacdmg-ai-content-assistant')}
                             </Button>
                         </div>
 
@@ -242,7 +242,7 @@ function addCustomInspectorControls(BlockEdit) {
                                 borderRadius: '4px',
                                 fontSize: '12px'
                             }}>
-                                <strong>{__('Generated Content Preview:', 'text-domain')}</strong>
+                                <strong>{__('Generated Content Preview:', 'wacdmg-ai-content-assistant')}</strong>
                                 <p style={{ margin: '5px 0 0 0', color: '#666' }}>
                                     {generatedContent.substring(0, 150)}...
                                 </p>
@@ -253,14 +253,14 @@ function addCustomInspectorControls(BlockEdit) {
                                         onClick={handleResetGeneratedToPrevious}
                                         style={{ marginRight: '10px' }}
                                     >
-                                        {__('Reset Generated to Previous', 'text-domain')}
+                                        {__('Reset Generated to Previous', 'wacdmg-ai-content-assistant')}
                                     </Button>
                                     <Button
                                         isTertiary
                                         isSmall
                                         onClick={handleReusePrevious}
                                     >
-                                        {__('Reuse Previous Content', 'text-domain')}
+                                        {__('Reuse Previous Content', 'wacdmg-ai-content-assistant')}
                                     </Button>
                                 </div>
                             </div>
@@ -273,7 +273,7 @@ function addCustomInspectorControls(BlockEdit) {
                                 onClick={handleReusePrevious}
                                 style={{ marginTop: '10px' }}
                             >
-                                {__('Reuse Previous Content', 'text-domain')}
+                                {__('Reuse Previous Content', 'wacdmg-ai-content-assistant')}
                             </Button>
                             <Button
                                 isDestructive
@@ -290,7 +290,7 @@ function addCustomInspectorControls(BlockEdit) {
                                     previousContentRef.current = '';
                                 }}
                             >
-                                {__('Reset Settings', 'text-domain')}
+                                {__('Reset Settings', 'wacdmg-ai-content-assistant')}
                             </Button>
                         </div>
                     </PanelBody>

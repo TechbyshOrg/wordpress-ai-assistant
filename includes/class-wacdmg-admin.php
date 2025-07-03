@@ -1,23 +1,35 @@
 <?php
+/**
+ * WACDMG Admin Class
+ *
+ * Handles admin-side functionality including menu setup, scripts/styles, and UI elements.
+ *
+ * @package WACDMG
+ */
 
-if ( ! defined( 'ABSPATH' ) ) {
-    exit; // Exit if accessed directly.
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly
 }
 
 class WACDMG_Admin {
-
+    /**
+     * Constructor to initialize hooks and actions.
+     */
     public function __construct() {
         $this->init_hooks();
     }
 
+    /**
+     * Initialize hooks for admin functionality.
+     */
     public function init_hooks() {
         
         add_action('edit_form_after_title', array($this, 'add_div_above_product_description'));
         // create a settings sub menu page on WooCommerce menu
         add_action( 'admin_menu', function() {
             add_menu_page(
-                __( 'AI Assistant', 'wacdmg' ),
-                __( 'AI Assistant', 'wacdmg' ),
+                __( 'AI Assistant', 'wacdmg-ai-content-assistant' ),
+                __( 'AI Assistant', 'wacdmg-ai-content-assistant' ),
                 'manage_options',
                 'wacdmg-settings',
                 array( $this, 'wacdmg_render_settings_page' ),
@@ -32,6 +44,9 @@ class WACDMG_Admin {
 
     }
 
+    /**
+     * Enqueue admin scripts and styles.
+     */
     public function enqueue_admin_scripts() {
         wp_enqueue_style( 'wacdmg-admin-style', WACDMG_PLUGIN_URL . 'css/admin-style.css' );
         wp_enqueue_script( 'wacdmg-admin-script', WACDMG_PLUGIN_URL . 'assets/js/app.js', array( 'wp-i18n' ), '1.0.0', true );
@@ -50,6 +65,11 @@ class WACDMG_Admin {
         wp_localize_script( 'wacdmg-admin-script', 'wacdmgAdmin', $data);
     }
 
+    /**
+     * Enqueue scripts for the paragraph block extension.
+     *
+     * This function is called in the block editor to enhance the paragraph block with additional functionality.
+     */
     public function enqueue_admin_block_scripts() {
         wp_enqueue_script(
             'paragraph-block-extension',
@@ -75,6 +95,12 @@ class WACDMG_Admin {
             'nonce' => wp_create_nonce('paragraph_block_nonce')
         ));
     }
+
+    /**
+     * Render the settings page for the plugin.
+     *
+     * This function is called when the settings page is accessed in the admin area.
+     */
     public function wacdmg_render_settings_page() {
         // Check user permissions
         if ( ! current_user_can( 'manage_options' ) ) {
@@ -85,6 +111,14 @@ class WACDMG_Admin {
         include_once WACDMG_PLUGIN_DIR . 'templates/admin-wacdmg-settings.php';
     }
 
+    /**
+     * Add a div above the product description in the product edit screen.
+     *
+     * This function is hooked to 'edit_form_after_title' to insert a custom div
+     * for displaying AI-generated content or other information.
+     *
+     * @param WP_Post $post The current post object.
+     */
     public function add_div_above_product_description($post) {
         if ($post->post_type === 'product') {
             echo '<div id="wacdmg-description-container" class="wacdmg-description-container"></div>';

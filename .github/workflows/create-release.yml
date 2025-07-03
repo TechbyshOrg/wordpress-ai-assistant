@@ -22,6 +22,7 @@ jobs:
           rsync -av ./ wacdmg-ai-content-assistant/ \
             --exclude='wacdmg-ai-content-assistant' \
             --exclude='app' \
+            --exclude='block-app' \
             --exclude='.git' \
             --exclude='.gitignore' \
             --exclude='.gitlab-ci.yml' \

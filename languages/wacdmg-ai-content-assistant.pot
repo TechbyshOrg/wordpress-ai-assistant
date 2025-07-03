@@ -1,0 +1,49 @@
+# Copyright (C) 2025 Techbysh
+# This file is distributed under the GPLv2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: AI Content & Meta Assistant 1.0.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/wp-ai-content-description-meta-generator\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2025-07-03T11:02:52+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.11.0\n"
+"X-Domain: wacdmg-ai-content-assistant\n"
+
+#. Plugin Name of the plugin
+#: wacdmg-ai-content-assistant.php
+msgid "AI Content & Meta Assistant"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: wacdmg-ai-content-assistant.php
+msgid "https://wordpress.org/plugins/smart-ai-assistant-content/"
+msgstr ""
+
+#. Description of the plugin
+#: wacdmg-ai-content-assistant.php
+msgid "Smart AI content generator for WordPress and WooCommerce — create product descriptions, blog posts, and SEO meta with a click."
+msgstr ""
+
+#. Author of the plugin
+#: wacdmg-ai-content-assistant.php
+msgid "Techbysh"
+msgstr ""
+
+#. Author URI of the plugin
+#: wacdmg-ai-content-assistant.php
+msgid "https://techbysh.com"
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:31
+#: includes/class-wacdmg-admin.php:32
+msgid "AI Assistant"
+msgstr ""
+
+#: templates/admin-wacdmg-settings.php:2
+msgid "Settings Page"
+msgstr ""
