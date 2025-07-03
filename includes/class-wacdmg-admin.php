@@ -48,7 +48,7 @@ class WACDMG_Admin {
      * Enqueue admin scripts and styles.
      */
     public function enqueue_admin_scripts() {
-        wp_enqueue_style( 'wacdmg-admin-style', WACDMG_PLUGIN_URL . 'css/admin-style.css' );
+        wp_enqueue_style( 'wacdmg-admin-style', WACDMG_PLUGIN_URL . 'css/admin-style.css', array(), WACDMG_PLUGIN_VERSION );
         wp_enqueue_script( 'wacdmg-admin-script', WACDMG_PLUGIN_URL . 'assets/js/app.js', array( 'wp-i18n' ), WACDMG_PLUGIN_VERSION, true );
         $api_namespace = defined( 'WACDMG_API_NAMESPACE' ) ? WACDMG_API_NAMESPACE : 'wacdmg/v1';
         $api_base_url = rest_url($api_namespace);
