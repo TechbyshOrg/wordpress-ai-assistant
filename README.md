@@ -92,4 +92,4 @@ First stable release. Ensure your OpenAI API key is set under plugin settings be
 
 For help, visit: https://techbysh.com/support  
 Donate to support development: https://techbysh.com/donate  
-GitHub repo (optional): https://github.com/techbysh/smart-ai-assistant-content
+GitHub repo (optional): https://github.com/TechbyshOrg/wordpress-ai-assistant
