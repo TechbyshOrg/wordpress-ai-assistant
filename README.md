@@ -1,9 +1,9 @@
-=== Smart AI Assistant for Content Creation ===
+=== AI Content & Meta Assistant ===
 Contributors: techbysh
 Donate link: https://techbysh.com/donate
 Tags: ai, content generation, openai, assistant, seo
 Requires at least: 6.0
-Tested up to: 6.5
+Tested up to: 6.8
 Requires PHP: 7.4
 Stable tag: 1.0.0
 License: GPLv2 or later
@@ -13,7 +13,7 @@ Smart AI content generator for WordPress — create product descriptions, blog p
 
 == Description ==
 
-**Smart AI Assistant for Content Creation** by **Techbysh** is a lightweight, high-performance plugin for WordPress websites. Whether you're running a WooCommerce store, a blog, or a business site, this assistant can help generate high-quality content powered by OpenAI’s GPT models.
+**AI Content & Meta Assistant** by **Techbysh** is a lightweight, high-performance plugin for WordPress websites. Whether you're running a WooCommerce store, a blog, or a business site, this assistant can help generate high-quality content powered by OpenAI’s GPT models.
 
 ✨ Supports WordPress posts, pages, and WooCommerce products  
 ✨ Creates SEO meta titles, meta descriptions, and alt text  
