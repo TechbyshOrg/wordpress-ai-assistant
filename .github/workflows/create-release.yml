@@ -23,6 +23,8 @@ jobs:
             --exclude='wacdmg-ai-content-assistant' \
             --exclude='app' \
             --exclude='block-app' \
+            --exclude='*.LICENSE.txt' \
+            --exclude='*.map' \
             --exclude='.git' \
             --exclude='.gitignore' \
             --exclude='.gitlab-ci.yml' \
