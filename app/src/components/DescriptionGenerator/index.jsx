@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { callWpApi } from '../../utils/callWpApi';
 import './style.css';
+import ProductPromptGenerator from '../../utils/PromptGenerator';
 
 const DescriptionGenerator = () => {
     const [addPrompt, setAddPrompt] = useState(false);
@@ -9,6 +10,7 @@ const DescriptionGenerator = () => {
     const [generationMethod, setGenerationMethod] = useState(null);
     const [yourPrompt, setYourPrompt] = useState('');
     const [insertButtonText, setInsertButtonText] = useState('Insert Into Description');
+    const promptGenerator = new ProductPromptGenerator();
 
     const clearGeneratedDescription = () => {
         setGeneratedDescription('');
@@ -23,7 +25,7 @@ const DescriptionGenerator = () => {
             alert('Please enter a product name.');
             return;
         }
-        const prompt = `Generate a WooCommerce-ready product description for the product: "${product_name}". Make it SEO-friendly, persuasive, and suitable for online shoppers. Avoid introductions or explanations—just return the product description only. Use HTML formatting.`;
+        const prompt = promptGenerator.productNameDescription(product_name);
         submitPrompt(method, prompt);
     };
 
@@ -46,8 +48,15 @@ const DescriptionGenerator = () => {
                 alert('Please enter a description to improve.');
                 return;
             }
-            prompt = `Improve the following product description: "${currentDescription}" to a WooCommerce-ready product description for the product "${product_name}"
-             using the prompt: "${yourPrompt}". Make it SEO-friendly, persuasive, and suitable for online shoppers. Avoid introductions or explanations—just return the product description only. Use HTML formatting.`;
+            prompt = promptGenerator.improveDescriptionCustom(currentDescription, product_name, yourPrompt);
+        }else if (method === 'title') {
+            setInsertButtonText("Insert to Title");
+            const product_name = document.querySelector('input[name="post_title"]').value;
+            if (!product_name || product_name.trim() === '') {
+                alert('Please enter a product name.');
+                return;
+            }
+            prompt = promptGenerator.improveTitleCustom(product_name, yourPrompt);
         }
 
         submitPrompt(method, prompt);
@@ -66,8 +75,20 @@ const DescriptionGenerator = () => {
             return;
         }
     
-        const prompt = `Improve the following product description: "${currentDescription}" to a WooCommerce-ready product description for the product "${product_name}". Make it SEO-friendly, persuasive, and suitable for online shoppers. Avoid introductions or explanations—just return the product description only. Use HTML formatting.`;
+        const prompt = promptGenerator.improveDescription(currentDescription, product_name);
         submitPrompt('improve', prompt);
+    };
+
+    const improveTitle = () => {
+        setGenerationMethod('title');
+        setInsertButtonText("Insert to Title");
+        const product_name = document.querySelector('input[name="post_title"]').value;
+        if (!product_name || product_name.trim() === '') {
+            alert('Please enter a product name.');
+            return;
+        }
+        const prompt = promptGenerator.improveTitle(product_name);
+        submitPrompt('title', prompt);
     };
 
     const submitPrompt = (method, prompt) => {
@@ -95,6 +116,12 @@ const DescriptionGenerator = () => {
 
     const insertDescription = () => {
         setInsertButtonText("Inserting...")
+
+        if (generationMethod === 'title') {
+            insertToTitle(generatedDescription);
+            return;
+        }
+
         insertToProductDescription(generatedDescription);
     };
 
@@ -115,6 +142,17 @@ const DescriptionGenerator = () => {
             }
         }
     }
+
+    const insertToTitle = (content) => {
+        const titleInput = document.querySelector('input[name="post_title"]');
+        if (titleInput) {
+            titleInput.value = content;
+            setInsertButtonText("Inserted");
+            setTimeout(() => setInsertButtonText("Insert Into Description"), 2000);
+        } else {
+            alert('Title input not found.');
+        }
+    };
 
     useEffect(() => {
         setGeneratedDescription(null);
@@ -196,6 +234,14 @@ const DescriptionGenerator = () => {
                                 }}
                         >
                             Improve Current Description with Your Own Prompt
+                        </button>
+
+                        <button
+                            type="button"
+                            className="wacdmg-improve-title-button"
+                            onClick={improveTitle}
+                        >
+                            Improve Title
                         </button>
                         
                     </div>

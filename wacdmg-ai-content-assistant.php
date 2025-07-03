@@ -1,7 +1,6 @@
 <?php
-<?php
 /*
-Plugin Name: Smart AI Assistant for Content Creation
+Plugin Name: AI Content & Meta Assistant
 Plugin URI: https://wordpress.org/plugins/smart-ai-assistant-content/
 Description: Smart AI content generator for WordPress and WooCommerce — create product descriptions, blog posts, and SEO meta with a click.
 Version: 1.0.0

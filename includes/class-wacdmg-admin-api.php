@@ -96,12 +96,20 @@ class WACDMG_Admin_API {
             ), 400);
         }
         $provider = isset($aiCred['provider']) ? $aiCred['provider'] : '';
+
+        $other_provider = apply_filters('wacdmg_use_additional_provider', false);
         
         if ($provider && $provider === 'groq') {
             $result = $this->wacdmg_handle_ai_prompt_groq($prompt, $aiCred['apiKey']);
         } elseif ($provider && $provider === 'chatgpt') {
             $result = $this->wacdmg_handle_ai_prompt_chatgpt($prompt, $aiCred['apiKey']);
-        } else {
+        } elseif ($other_provider) {
+            $default_value = array(
+                'success' => false,
+                'error'   => 'Other provider not implemented yet.'
+            );
+            $result = apply_filters('wacdmg_handle_ai_prompt_other', $default_value , $prompt, $aiCred['apiKey'], $aiCred['model']);
+        }else {
             $result = array(
             'success' => false,
             'error'   => 'Unsupported AI provider selected.'
