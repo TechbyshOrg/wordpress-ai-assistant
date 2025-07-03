@@ -17,6 +17,7 @@ class WACDMG_Admin_API {
     public function register_routes() {
         $this->wacdmg_register_route('/generate-description', array($this, 'wacdmg_generate_description'), 'POST');
         $this->wacdmg_register_route('/save-settings', array($this, 'wacdmg_save_settings'), 'POST');
+        $this->wacdmg_register_route('/generate-paragraph-content', array($this, 'wacdmg_generate_description'), 'POST');
     }
 
     /**
@@ -79,11 +80,34 @@ class WACDMG_Admin_API {
     }
 
     /**
+     * Generate paragraph content endpoint
+     */
+    public function wacdmg_generate_paragraph_content(WP_REST_Request $request) {
+        $prompt = $request->get_param('prompt');
+        $method = $request->get_param('method');
+
+        if (empty($prompt)) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'data'    => array('message' => 'Prompt is required.')
+            ), 400);
+        }
+
+        // Here you can implement the logic to generate paragraph content based on the prompt
+        // For now, we will just return a dummy response
+        return new WP_REST_Response(array(
+            'success' => true,
+            'data'    => array('content' => 'Generated content based on the prompt: ' . $prompt)
+        ), 200);
+    }
+
+    /**
      * Sample endpoint
      */
     public function wacdmg_generate_description(WP_REST_Request $request) {
         $prompt = $request->get_param('prompt');
         $method = $request->get_param('method');
+        write_log('Received prompt: ' . $prompt);
 
         $aiCred = get_option('wacdmg_ai_creds');
         write_log($aiCred);
@@ -109,14 +133,15 @@ class WACDMG_Admin_API {
                 'error'   => 'Other provider not implemented yet.'
             );
             $result = apply_filters('wacdmg_handle_ai_prompt_other', $default_value , $prompt, $aiCred['apiKey'], $aiCred['model']);
-        }else {
+        } else {
             $result = array(
-            'success' => false,
-            'error'   => 'Unsupported AI provider selected.'
+                'success' => false,
+                'error'   => 'Unsupported AI provider selected.'
             );
         }
-        
 
+        write_log($result['description']);
+        
         if ($result['success']) {
             return new WP_REST_Response(array(
                 'success' => true,

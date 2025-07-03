@@ -15,24 +15,26 @@ class WACDMG_Admin {
         add_action('edit_form_after_title', array($this, 'add_div_above_product_description'));
         // create a settings sub menu page on WooCommerce menu
         add_action( 'admin_menu', function() {
-            add_submenu_page(
-                'woocommerce',
-                __( 'AI for Woocommerce', 'wacdmg' ),
-                __( 'AI for Woocommerce', 'wacdmg' ),
+            add_menu_page(
+                __( 'AI Assistant', 'wacdmg' ),
+                __( 'AI Assistant', 'wacdmg' ),
                 'manage_options',
                 'wacdmg-settings',
-                array( $this, 'wacdmg_render_settings_page' )
+                array( $this, 'wacdmg_render_settings_page' ),
+                'data:image/svg+xml;base64,' . base64_encode(file_get_contents(WACDMG_PLUGIN_DIR . 'assets/images/main-icon.svg')), // Custom SVG icon
+                56 // Position in the menu
             );
         });
 
         //enque admin scripts and styles
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
+        add_action('enqueue_block_editor_assets', array($this, 'enqueue_admin_block_scripts'));
+
     }
 
     public function enqueue_admin_scripts() {
         wp_enqueue_style( 'wacdmg-admin-style', WACDMG_PLUGIN_URL . 'css/admin-style.css' );
-        wp_enqueue_script( 'wacdmg-admin-script', WACDMG_PLUGIN_URL . 'assets/js/app.js', array( 'wp-i18n' ), null, true );
-
+        wp_enqueue_script( 'wacdmg-admin-script', WACDMG_PLUGIN_URL . 'assets/js/app.js', array( 'wp-i18n' ), '1.0.0', true );
         $api_namespace = defined( 'WACDMG_API_NAMESPACE' ) ? WACDMG_API_NAMESPACE : 'wacdmg/v1';
         $api_base_url = rest_url($api_namespace);
         if (strpos($api_base_url, '?rest_route=') !== false) {
@@ -45,8 +47,33 @@ class WACDMG_Admin {
             'rest_nonce' => wp_create_nonce('wp_rest'),
             'apiBaseUrl' => esc_url_raw($api_base_url),
         );
-
         wp_localize_script( 'wacdmg-admin-script', 'wacdmgAdmin', $data);
+    }
+
+    public function enqueue_admin_block_scripts() {
+        wp_enqueue_script(
+            'paragraph-block-extension',
+            WACDMG_PLUGIN_URL . 'assets/js/block-enhancer.js',
+            array(
+                'wp-blocks', 
+                'wp-element', 
+                'wp-editor', 
+                'wp-components', 
+                'wp-hooks',
+                'wp-i18n',
+                'wp-data',
+                'wp-block-editor',
+                'wp-plugins' 
+            ),
+            '1.0.0',
+            true
+        );
+        
+        // Optional: Localize script for AJAX calls
+        wp_localize_script('paragraph-block-extension', 'paragraphBlockAjax', array(
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('paragraph_block_nonce')
+        ));
     }
     public function wacdmg_render_settings_page() {
         // Check user permissions
