@@ -90,9 +90,9 @@ class WACDMG_Admin {
         );
         
         // Optional: Localize script for AJAX calls
-        wp_localize_script('paragraph-block-extension', 'paragraphBlockAjax', array(
+        wp_localize_script('paragraph-block-extension', 'wacdmgParagraphBlockAjax', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('paragraph_block_nonce')
+            'nonce' => wp_create_nonce('wacdmg_paragraph_block_nonce')
         ));
     }
 

@@ -125,7 +125,7 @@ function addCustomInspectorControls(BlockEdit) {
                     prompt: finalPrompt,
                     method: generationType,
                     word_count: enableWordCount ? wordCount : '',
-                    nonce: window.paragraphBlockAjax?.nonce || ''
+                    nonce: window.wacdmgParagraphBlockAjax?.nonce || ''
                 })
                 .then((response) => {
                     if (response.success) {
