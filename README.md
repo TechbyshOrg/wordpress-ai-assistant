@@ -1,6 +1,6 @@
 === AI Content & Meta Assistant ===
 Contributors: techbysh
-Donate link: https://techbysh.com/donate
+Donate link: https://techbysh.com
 Tags: ai, content generation, openai, assistant, seo
 Requires at least: 6.0
 Tested up to: 6.8
@@ -93,3 +93,26 @@ First stable release. Ensure your OpenAI API key is set under plugin settings be
 For help, visit: https://techbysh.com/support  
 Donate to support development: https://techbysh.com/donate  
 GitHub repo (optional): https://github.com/TechbyshOrg/wordpress-ai-assistant
+
+== Source Code ==
+The plugin is built using React and Webpack. You can access the full uncompressed source code and build instructions at:
+https://github.com/TechbyshOrg/wordpress-ai-assistant
+
+== External Services ==
+
+This plugin uses external APIs to generate AI responses for content suggestions.
+
+1. **OpenAI API**
+   - **Purpose:** Generates content and suggestions.
+   - **Data Sent:** The prompt entered by the user or some predefined prompt
+   - **When Sent:** When user triggers AI content generation.
+   - **Service:** [OpenAI](https://openai.com/)
+   - [Terms of Use](https://openai.com/policies/terms-of-use) | [Privacy Policy](https://openai.com/policies/privacy-policy)
+
+2. **Groq API**
+   - **Purpose:** Alternative AI model provider.
+   - **Data Sent:** Prompt entered by the user or some predefined prompt.
+   - **When Sent:** When Groq is selected in the plugin settings.
+   - **Service:** [Groq](https://groq.com/)
+   - [Terms](https://groq.com/terms-of-service) | [Privacy](https://groq.com/privacy-policy)
+

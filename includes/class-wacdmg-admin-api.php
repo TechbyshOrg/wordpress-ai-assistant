@@ -25,14 +25,14 @@ class WACDMG_Admin_API {
      */
     public function __construct() {
         $this->namespace = defined('WACDMG_API_NAMESPACE') ? WACDMG_API_NAMESPACE : 'wacdmg/v1';
-        $this->init_hooks();
+        $this->wacdmg_init_hooks();
     }
 
     /**
      * Initialize WordPress hooks
      */
-    public function init_hooks() {
-        add_action('rest_api_init', array($this, 'register_routes'));
+    public function wacdmg_init_hooks() {
+        add_action('rest_api_init', array($this, 'wacdmg_register_routes'));
     }
 
     /**
@@ -40,7 +40,7 @@ class WACDMG_Admin_API {
      *
      * @since 1.0.0
      */
-    public function register_routes() {
+    public function wacdmg_register_routes() {
         $this->wacdmg_register_route('/generate-description', array($this, 'wacdmg_generate_description'), 'POST');
         $this->wacdmg_register_route('/save-settings', array($this, 'wacdmg_save_settings'), 'POST');
         $this->wacdmg_register_route('/generate-paragraph-content', array($this, 'wacdmg_generate_description'), 'POST');

@@ -16,15 +16,15 @@ class WACDMG_Admin {
      * Constructor to initialize hooks and actions.
      */
     public function __construct() {
-        $this->init_hooks();
+        $this->wacdmg_init_hooks();
     }
 
     /**
      * Initialize hooks for admin functionality.
      */
-    public function init_hooks() {
+    public function wacdmg_init_hooks() {
         
-        add_action('edit_form_after_title', array($this, 'add_div_above_product_description'));
+        add_action('edit_form_after_title', array($this, 'wacdmg_add_div_above_product_description'));
         // create a settings sub menu page on WooCommerce menu
         add_action( 'admin_menu', function() {
             add_menu_page(
@@ -39,15 +39,15 @@ class WACDMG_Admin {
         });
 
         //enque admin scripts and styles
-        add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
-        add_action('enqueue_block_editor_assets', array($this, 'enqueue_admin_block_scripts'));
+        add_action( 'admin_enqueue_scripts', array( $this, 'wacdmg_enqueue_admin_scripts' ) );
+        add_action('enqueue_block_editor_assets', array($this, 'wacdmg_enqueue_admin_block_scripts'));
 
     }
 
     /**
      * Enqueue admin scripts and styles.
      */
-    public function enqueue_admin_scripts() {
+    public function wacdmg_enqueue_admin_scripts() {
         wp_enqueue_style( 'wacdmg-admin-style', WACDMG_PLUGIN_URL . 'css/admin-style.css', array(), WACDMG_PLUGIN_VERSION );
         wp_enqueue_script( 'wacdmg-admin-script', WACDMG_PLUGIN_URL . 'assets/js/app.js', array( 'wp-i18n' ), WACDMG_PLUGIN_VERSION, true );
         $api_namespace = defined( 'WACDMG_API_NAMESPACE' ) ? WACDMG_API_NAMESPACE : 'wacdmg/v1';
@@ -70,7 +70,7 @@ class WACDMG_Admin {
      *
      * This function is called in the block editor to enhance the paragraph block with additional functionality.
      */
-    public function enqueue_admin_block_scripts() {
+    public function wacdmg_enqueue_admin_block_scripts() {
         wp_enqueue_script(
             'paragraph-block-extension',
             WACDMG_PLUGIN_URL . 'assets/js/block-enhancer.js',
@@ -119,7 +119,7 @@ class WACDMG_Admin {
      *
      * @param WP_Post $post The current post object.
      */
-    public function add_div_above_product_description($post) {
+    public function wacdmg_add_div_above_product_description($post) {
         if ($post->post_type === 'product') {
             echo '<div id="wacdmg-description-container" class="wacdmg-description-container"></div>';
         }
