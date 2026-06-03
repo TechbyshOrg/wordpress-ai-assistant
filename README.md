@@ -3,9 +3,9 @@ Contributors: techbysh
 Donate link: https://techbysh.com
 Tags: ai, content generation, openai, assistant, seo
 Requires at least: 6.0
-Tested up to: 6.8
-Requires PHP: 7.4
-Stable tag: 1.0.0
+Tested up to: 7.0
+Requires PHP: 7.2
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -68,14 +68,12 @@ Yes. No personal or site data is stored. All content is generated in real-time t
 
 == Changelog ==
 
-= 1.0.0 =
-* Initial release
-* WooCommerce product support
-* SEO metadata generation
-* Prompt templates and customization
-* Works with Gutenberg, Classic Editor, and Elementor
+= 1.0.1 =
+* General Bug Fixes
 
 == Upgrade Notice ==
+= 1.0.1 =
+* General Bug Fixes
 
 = 1.0.0 =
 First stable release. Ensure your OpenAI API key is set under plugin settings before updating.
