@@ -41,7 +41,8 @@ module.exports = (env, argv) => {
             '@wordpress/hooks': ['wp', 'hooks'],
             '@wordpress/i18n': ['wp', 'i18n'],
             '@wordpress/plugins': ['wp', 'plugins'],
-            '@wordpress/editor': ['wp', 'editor']
+            '@wordpress/editor': ['wp', 'editor'],
+            '@wordpress/edit-post': ['wp', 'editPost']
         },
         devtool: isProduction ? false : 'source-map',
         watch: !isProduction,

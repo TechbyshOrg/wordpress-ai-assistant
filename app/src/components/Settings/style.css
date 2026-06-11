@@ -1,162 +1,597 @@
-/* Main form container */
-.wacdmg-form {
-  max-width: 850px;
-  background: #fff;
-  border: 1px solid #ccd0d4;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
-  margin-top: 20px;
-  padding: 20px;
+/* =========================================================================
+   WACDMG Settings Page — v1.1.0
+   Modern card-based design with tabs
+   ========================================================================= */
+
+/* Settings wrapper */
+.wacdmg-settings-wrap {
+    max-width: 900px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Form titles */
-.wacdmg-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 20px;
-  padding: 0;
-  line-height: 1.4;
-  color: #1d2327;
+/* =========================================================================
+   Tabs
+   ========================================================================= */
+.wacdmg-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 28px;
+    overflow-x: auto;
 }
 
-/* Form sections */
-.wacdmg-form-section {
-  margin-bottom: 25px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #dcdcde;
+.wacdmg-tab-btn {
+    background: none;
+    border: none;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+    transition: color 0.2s, border-color 0.2s;
 }
 
-.wacdmg-form-section h3 {
-  font-size: 13px;
-  font-weight: 500;
-  margin: 0 0 15px;
-  color: #1d2327;
-  text-transform: uppercase;
+.wacdmg-tab-btn:hover {
+    color: #2271b1;
 }
 
-/* Form rows - label + input */
-.wacdmg-form-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 15px;
+.wacdmg-tab-btn.active {
+    color: #2271b1;
+    border-bottom-color: #2271b1;
+    font-weight: 600;
 }
 
-.wacdmg-label {
-  width: 150px;
-  font-weight: 500;
-  color: #1d2327;
-  padding-right: 10px;
+/* =========================================================================
+   Tab Content
+   ========================================================================= */
+.wacdmg-tab-content {
+    animation: wacdmg-fade-in 0.2s ease;
+}
+
+@keyframes wacdmg-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Section header */
+.wacdmg-section-header {
+    margin-bottom: 24px;
+}
+
+.wacdmg-section-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 6px;
+}
+
+.wacdmg-section-header p {
+    color: #64748b;
+    margin: 0;
+    font-size: 14px;
+}
+
+/* =========================================================================
+   Provider Cards
+   ========================================================================= */
+.wacdmg-provider-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+}
+
+.wacdmg-provider-card {
+    position: relative;
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px 14px 14px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.wacdmg-provider-card:hover {
+    border-color: var(--provider-color, #2271b1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--provider-color, #2271b1) 15%, transparent);
+    transform: translateY(-1px);
+}
+
+.wacdmg-provider-card.selected {
+    border-color: var(--provider-color, #2271b1);
+    background: color-mix(in srgb, var(--provider-color, #2271b1) 5%, white);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--provider-color, #2271b1) 20%, transparent);
+}
+
+.wacdmg-card-indicator {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--provider-color, #2271b1);
+    display: block;
+    transition: background 0.2s;
+}
+
+.wacdmg-provider-card.selected .wacdmg-card-indicator {
+    background: var(--provider-color, #2271b1);
+    box-shadow: inset 0 0 0 3px white;
+}
+
+.wacdmg-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.3;
+}
+
+.wacdmg-card-desc {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.4;
+}
+
+/* =========================================================================
+   Provider Config
+   ========================================================================= */
+.wacdmg-provider-config {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px 24px;
+}
+
+.wacdmg-provider-config h3 {
+    margin: 0 0 18px;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.wacdmg-config-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* =========================================================================
+   Form Fields
+   ========================================================================= */
+.wacdmg-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.wacdmg-field-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
 }
 
 .wacdmg-input,
 .wacdmg-select {
-  flex: 1;
-  max-width: 400px;
-  padding: 6px 8px;
-  border: 1px solid #8c8f94;
-  border-radius: 3px;
-  background-color: #fff;
-  color: #2c3338;
-  font-size: 13px;
-  line-height: 1.5;
-  min-height: 30px;
+    padding: 9px 12px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #1e293b;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    max-width: 480px;
+    width: 100%;
+    box-sizing: border-box;
+    height: 38px;
 }
 
 .wacdmg-input:focus,
 .wacdmg-select:focus {
-  border-color: #2271b1;
-  box-shadow: 0 0 0 1px #2271b1;
-  outline: 2px solid transparent;
+    outline: none;
+    border-color: #2271b1;
+    box-shadow: 0 0 0 3px rgba(34, 113, 177, 0.15);
 }
 
-/* Provider radio buttons */
-.wacdmg-provider-group {
-  display: flex;
-  gap: 20px;
+.wacdmg-key-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 480px;
+    height: 38px;
 }
 
-.wacdmg-provider-label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
+.wacdmg-key-input-wrap .wacdmg-input {
+    flex: 1;
+    max-width: none;
 }
 
-.wacdmg-radio {
-  margin: 0;
+.wacdmg-show-key-btn {
+    background: #fff;
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    transition: all 0.2s;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    white-space: nowrap;
 }
 
-/* Form actions */
-.wacdmg-actions {
-  margin-top: 20px;
+.wacdmg-show-key-btn:hover {
+    border-color: #2271b1;
+    color: #2271b1;
+    background: #f0f7fc;
 }
 
-.wacdmg-button {
-  background: #2271b1;
-  border: 1px solid #2271b1;
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 3px;
-  font-size: 13px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
+.wacdmg-docs-link {
+    font-size: 12px;
+    color: #2271b1;
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 2px;
 }
 
-.wacdmg-button:hover {
-  background: #135e96;
+.wacdmg-docs-link:hover {
+    text-decoration: underline;
 }
 
-.wacdmg-button:disabled {
-  background: #a7aaad;
-  border-color: #a7aaad;
-  cursor: default;
+/* =========================================================================
+   Radio Groups
+   ========================================================================= */
+.wacdmg-radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-/* Loading spinner */
-.spin {
-  animation: spin 1s linear infinite;
+.wacdmg-radio-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #374151;
 }
 
-@keyframes spin {
-  100% { transform: rotate(360deg); }
+.wacdmg-fields-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 8px;
 }
 
-/* Messages */
+.wacdmg-fields-row .wacdmg-field-group {
+    flex: 1;
+    min-width: 150px;
+}
+
+/* =========================================================================
+   Toggle
+   ========================================================================= */
+.wacdmg-toggle-group {
+    margin: 12px 0;
+}
+
+.wacdmg-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #374151;
+}
+
+.wacdmg-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.wacdmg-toggle-track {
+    width: 38px;
+    height: 22px;
+    border-radius: 11px;
+    background: #cbd5e1;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.wacdmg-toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.wacdmg-toggle-input:checked + .wacdmg-toggle-track {
+    background: #2271b1;
+}
+
+.wacdmg-toggle-input:checked + .wacdmg-toggle-track::after {
+    transform: translateX(16px);
+}
+
+/* =========================================================================
+   Notices
+   ========================================================================= */
+.wacdmg-notice {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.wacdmg-notice-warning {
+    background: #fef9c3;
+    border: 1px solid #fde047;
+    color: #713f12;
+}
+
+.wacdmg-notice-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+}
+
+/* =========================================================================
+   SEO Detected Badges
+   ========================================================================= */
+.wacdmg-seo-detected {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #374151;
+    font-weight: 600;
+}
+
+.wacdmg-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.wacdmg-badge-green {
+    background: #dcfce7;
+    color: #14532d;
+    border: 1px solid #bbf7d0;
+}
+
+.wacdmg-badge-gray {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+/* =========================================================================
+   Usage Stats
+   ========================================================================= */
+.wacdmg-usage-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 8px;
+}
+
+.wacdmg-stat-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 120px;
+    text-align: center;
+}
+
+.wacdmg-stat-number {
+    font-size: 28px;
+    font-weight: 700;
+    color: #2271b1;
+    line-height: 1;
+}
+
+.wacdmg-stat-label {
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-transform: capitalize;
+}
+
+/* =========================================================================
+   Buttons
+   ========================================================================= */
+.wacdmg-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+
+.wacdmg-btn-primary {
+    background: #2271b1;
+    color: #fff;
+    border-color: #2271b1;
+}
+
+.wacdmg-btn-primary:hover:not(:disabled) {
+    background: #1a5fa1;
+    box-shadow: 0 2px 8px rgba(34, 113, 177, 0.35);
+}
+
+.wacdmg-btn-primary:disabled {
+    background: #94a3b8;
+    border-color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.wacdmg-btn-danger {
+    background: #fff;
+    color: #dc2626;
+    border-color: #fca5a5;
+}
+
+.wacdmg-btn-danger:hover {
+    background: #fef2f2;
+    border-color: #dc2626;
+}
+
+/* =========================================================================
+   Settings Footer
+   ========================================================================= */
+.wacdmg-settings-footer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+}
+
+/* =========================================================================
+   Messages
+   ========================================================================= */
 .wacdmg-message {
-  padding: 10px 12px;
-  margin-top: 15px;
-  border-left: 4px solid;
-  background: #f6f7f7;
+    padding: 9px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
 }
 
 .wacdmg-message.success {
-  border-left-color: #00a32a;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #14532d;
 }
 
 .wacdmg-message.error {
-  border-left-color: #d63638;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #7f1d1d;
 }
 
-/* Responsive */
-@media screen and (max-width: 782px) {
-  .wacdmg-form-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .wacdmg-label {
-    width: 100%;
-    margin-bottom: 5px;
-  }
-  
-  .wacdmg-input,
-  .wacdmg-select {
-    width: 100%;
-    max-width: 100%;
-  }
-  
-  .wacdmg-provider-group {
-    flex-direction: column;
-    gap: 10px;
-  }
+/* =========================================================================
+   Spinner
+   ========================================================================= */
+.wacdmg-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.5);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: wacdmg-spin 0.7s linear infinite;
+}
+
+@keyframes wacdmg-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* =========================================================================
+   Screen reader only
+   ========================================================================= */
+.wacdmg-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+}
+
+/* =========================================================================
+   Test Connection Styles
+   ========================================================================= */
+.wacdmg-test-key-btn {
+    background: #fff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    transition: all 0.2s;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.wacdmg-test-key-btn:hover:not(:disabled) {
+    border-color: #2271b1;
+    color: #2271b1;
+    background: #f0f7fc;
+}
+
+.wacdmg-test-key-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.wacdmg-test-result {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.wacdmg-test-result.success {
+    color: #16a34a;
+}
+
+.wacdmg-test-result.error {
+    color: #dc2626;
+}
+
+/* =========================================================================
+   Responsive
+   ========================================================================= */
+@media (max-width: 640px) {
+    .wacdmg-provider-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .wacdmg-tabs {
+        flex-wrap: wrap;
+    }
+    .wacdmg-tab-btn {
+        font-size: 12px;
+        padding: 10px 12px;
+    }
 }

@@ -1,0 +1,333 @@
+/* =========================================================================
+   WACDMG Image Generator Page
+   ========================================================================= */
+.wacdmg-imggen-wrap {
+    max-width: 960px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.wacdmg-imggen-controls {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.wacdmg-imggen-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 6px;
+}
+
+.wacdmg-imggen-header p {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0 0 20px;
+}
+
+.wacdmg-imggen-header a {
+    color: #2271b1;
+    text-decoration: none;
+}
+
+.wacdmg-imggen-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.wacdmg-imggen-field {
+    margin-bottom: 16px;
+}
+
+.wacdmg-imggen-prompt-wrap {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.wacdmg-imggen-textarea {
+    flex: 1;
+    padding: 12px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 7px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    color: #1e293b;
+    background: #f8fafc;
+    transition: border-color 0.2s;
+}
+
+.wacdmg-imggen-textarea:focus {
+    outline: none;
+    border-color: #2271b1;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(34,113,177,0.12);
+}
+
+.wacdmg-imggen-enhance-btn {
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s, transform 0.1s;
+}
+
+.wacdmg-imggen-enhance-btn:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.wacdmg-imggen-enhance-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.wacdmg-imggen-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.wacdmg-imggen-select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+    color: #1e293b;
+    transition: border-color 0.2s;
+}
+
+.wacdmg-imggen-select:focus {
+    outline: none;
+    border-color: #2271b1;
+}
+
+.wacdmg-imggen-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.wacdmg-imggen-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: #374151;
+    cursor: pointer;
+}
+
+.wacdmg-imggen-generate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 24px;
+    background: linear-gradient(135deg, #2271b1, #1a5fa1);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, box-shadow 0.2s, transform 0.1s;
+    box-shadow: 0 3px 12px rgba(34,113,177,0.3);
+}
+
+.wacdmg-imggen-generate-btn:hover:not(:disabled) {
+    opacity: 0.92;
+    box-shadow: 0 5px 18px rgba(34,113,177,0.4);
+    transform: translateY(-1px);
+}
+
+.wacdmg-imggen-generate-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.wacdmg-imggen-spinner {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: wacdmg-spin 0.7s linear infinite;
+}
+
+@keyframes wacdmg-spin {
+    to { transform: rotate(360deg); }
+}
+
+.wacdmg-imggen-message {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 14px;
+}
+
+.wacdmg-imggen-message.success {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #14532d;
+}
+
+.wacdmg-imggen-message.error {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #7f1d1d;
+}
+
+/* Gallery */
+.wacdmg-imggen-gallery h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 14px;
+}
+
+.wacdmg-imggen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.wacdmg-imggen-card {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.wacdmg-imggen-card:hover {
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.wacdmg-imggen-img-wrap {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: #f1f5f9;
+}
+
+.wacdmg-imggen-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.wacdmg-imggen-card:hover .wacdmg-imggen-img-wrap img {
+    transform: scale(1.03);
+}
+
+.wacdmg-imggen-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.wacdmg-imggen-card:hover .wacdmg-imggen-overlay {
+    opacity: 1;
+}
+
+.wacdmg-imggen-overlay-btn {
+    padding: 6px 14px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e293b;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+
+.wacdmg-imggen-overlay-btn:hover {
+    background: #fff;
+}
+
+.wacdmg-imggen-card-meta {
+    padding: 10px 12px;
+}
+
+.wacdmg-imggen-card-prompt {
+    font-size: 11px;
+    color: #64748b;
+    margin: 0 0 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wacdmg-imggen-card-time {
+    font-size: 10px;
+    color: #94a3b8;
+    margin: 0 0 6px;
+}
+
+.wacdmg-imggen-saved-badge {
+    font-size: 10px;
+    background: #dcfce7;
+    color: #14532d;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* Empty state */
+.wacdmg-imggen-empty {
+    text-align: center;
+    padding: 60px 24px;
+    background: #f8fafc;
+    border: 2px dashed #cbd5e1;
+    border-radius: 10px;
+    color: #64748b;
+}
+
+.wacdmg-imggen-empty-icon {
+    font-size: 48px;
+    margin-bottom: 14px;
+    display: block;
+}
+
+.wacdmg-imggen-empty p {
+    margin: 0;
+    font-size: 14px;
+}
+
+@media (max-width: 640px) {
+    .wacdmg-imggen-prompt-wrap {
+        flex-direction: column;
+    }
+    .wacdmg-imggen-options-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}

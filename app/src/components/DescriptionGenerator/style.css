@@ -1,98 +1,435 @@
+/* =========================================================================
+   WACDMG Description Generator — WooCommerce Product Editor
+   v1.1.0 — Premium redesign
+   ========================================================================= */
+
+/* =========================================================================
+   Container
+   ========================================================================= */
 .wacdmg-description-container {
-  margin: 10px 0px;
+    margin: 12px 0 4px;
 }
 
 .wacdmg-generator-container {
-  background: #fff;
-  border: 1px solid #ccd0d4;
-  border-radius: 4px;
-  padding: 15px;
-  margin-bottom: 24px;
-  font-family: var(--wp--preset--font-family--system, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
-  box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+    background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 50%);
+    border: 1.5px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 0;
+    margin-bottom: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    box-shadow: 0 2px 8px rgba(34, 113, 177, 0.08);
+    overflow: hidden;
 }
 
-/* .wacdmg-generator-prompt-container {
-  margin-bottom: 16px;
-} */
+/* =========================================================================
+   Header
+   ========================================================================= */
+.wacdmg-generator-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: linear-gradient(90deg, #1e40af 0%, #2271b1 100%);
+    flex-wrap: wrap;
+    gap: 8px;
+}
 
+.wacdmg-ai-badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.wacdmg-header-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.wacdmg-control-select {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 5px;
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    max-width: 150px;
+}
+
+.wacdmg-control-select:focus {
+    outline: none;
+    background: rgba(255,255,255,0.25);
+}
+
+.wacdmg-control-select option {
+    background: #1e40af;
+    color: #fff;
+}
+
+/* =========================================================================
+   Loading Bar
+   ========================================================================= */
+.wacdmg-loading-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #eff6ff;
+    border-bottom: 1px solid #bfdbfe;
+}
+
+.wacdmg-loading-progress {
+    width: 120px;
+    height: 4px;
+    background: #dbeafe;
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+}
+
+.wacdmg-loading-progress::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -40%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(90deg, #2271b1, #60a5fa);
+    border-radius: 2px;
+    animation: wacdmg-progress 1.2s ease infinite;
+}
+
+@keyframes wacdmg-progress {
+    0%   { left: -40%; }
+    100% { left: 100%; }
+}
+
+.wacdmg-loading-text {
+    font-size: 12px;
+    color: #2271b1;
+    font-weight: 500;
+}
+
+/* =========================================================================
+   Custom Prompt Input
+   ========================================================================= */
 .wacdmg-prompt-input-wrapper {
-  width: 100%;
-}
-
-.wacdmg-generator-prompt {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  /* margin-bottom: 16px; */
-  flex-wrap: wrap;
-}
-
-.wacdmg-generate-button,
-.wacdmg-improve-button,
-.wacdmg-improve-prompt-button,
-.wacdmg-improve-title-button,
-.wacdmg-add-prompt,
-.wacdmg-submit-prompt,
-.wacdmg-cancel-prompt,
-.wacdmg-clear-button,
-.wacdmg-insert-button {
-  background: #2271b1;
-  color: #fff;
-  border: none;
-  border-radius: 3px;
-  padding: 8px 16px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-  font-weight: 500;
-  box-shadow: 0 1px 0 #ccd0d4;
-  margin-right: 8px;
-}
-
-.wacdmg-generate-button:hover,
-.wacdmg-add-prompt:hover,
-.wacdmg-submit-prompt:hover,
-.wacdmg-cancel-prompt:hover,
-.wacdmg-clear-button:hover,
-.wacdmg-insert-button:hover {
-  background: #135e96;
-}
-
-.wacdmg-prompt-input {
-  width: 100%;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 12px;
+    padding: 14px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .wacdmg-prompt-textarea {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ccd0d4;
-  border-radius: 3px;
-  font-size: 14px;
-  background: #f6f7f7;
-  color: #23282d;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    resize: vertical;
+    background: #f8fafc;
+    color: #1e293b;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+    font-family: inherit;
 }
 
-.wacdmg-description-output {
-  margin-top: 20px;
-  padding: 16px;
-  background: #f6f7f7;
-  border: 1px solid #e2e4e7;
-  border-radius: 3px;
+.wacdmg-prompt-textarea:focus {
+    outline: none;
+    border-color: #2271b1;
+    background: #fff;
 }
 
-.wacdmg-description-text {
-  margin-top: 12px;
-  font-size: 15px;
-  color: #23282d;
-  line-height: 1.6;
-  background: #fff;
-  padding: 12px;
-  border-radius: 3px;
-  border: 1px solid #e2e4e7;
-  word-break: break-word;
+.wacdmg-prompt-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+/* =========================================================================
+   Actions Grid
+   ========================================================================= */
+.wacdmg-actions-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 12px 14px;
+}
+
+.wacdmg-action-group {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f7ff;
+}
+
+.wacdmg-action-group:last-child {
+    border-bottom: none;
+}
+
+.wacdmg-action-group-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.wacdmg-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* =========================================================================
+   Buttons
+   ========================================================================= */
+.wacdmg-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 5px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.1s, border-color 0.15s;
+    white-space: nowrap;
+    border: 1.5px solid transparent;
+}
+
+.wacdmg-btn:active {
+    transform: scale(0.97);
+}
+
+.wacdmg-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.wacdmg-btn-sm {
+    font-size: 12px;
+    padding: 5px 12px;
+}
+
+.wacdmg-btn-primary {
+    background: #2271b1;
+    color: #fff;
+    border-color: #2271b1;
+}
+
+.wacdmg-btn-primary:hover:not(:disabled) {
+    background: #1a5fa1;
+    box-shadow: 0 2px 6px rgba(34, 113, 177, 0.35);
+}
+
+.wacdmg-btn-outline {
+    background: #fff;
+    color: #2271b1;
+    border-color: #bfdbfe;
+}
+
+.wacdmg-btn-outline:hover:not(:disabled) {
+    background: #eff6ff;
+    border-color: #2271b1;
+}
+
+.wacdmg-btn-ghost {
+    background: transparent;
+    color: #64748b;
+    border-color: transparent;
+}
+
+.wacdmg-btn-ghost:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+/* =========================================================================
+   Output Panel
+   ========================================================================= */
+.wacdmg-output-panel {
+    margin: 0;
+    border-top: 1px solid #bfdbfe;
+}
+
+.wacdmg-output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #eff6ff;
+    border-bottom: 1px solid #bfdbfe;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.wacdmg-output-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #2271b1;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.wacdmg-output-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.wacdmg-output-content {
+    padding: 16px;
+    font-size: 14px;
+    color: #1e293b;
+    line-height: 1.7;
+    background: #fff;
+    max-height: 320px;
+    overflow-y: auto;
+    word-break: break-word;
+}
+
+.wacdmg-output-content h1,
+.wacdmg-output-content h2,
+.wacdmg-output-content h3 {
+    margin-top: 0;
+}
+
+.wacdmg-output-content ul,
+.wacdmg-output-content ol {
+    padding-left: 20px;
+}
+
+/* =========================================================================
+   SEO Panel
+   ========================================================================= */
+.wacdmg-seo-panel,
+.wacdmg-image-panel {
+    border-top: 1px solid #bfdbfe;
+}
+
+.wacdmg-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #f0fdf4;
+    border-bottom: 1px solid #bbf7d0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #14532d;
+}
+
+.wacdmg-seo-fields {
+    padding: 14px 16px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.wacdmg-seo-field label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.wacdmg-char-count {
+    background: #f1f5f9;
+    color: #64748b;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.wacdmg-seo-field p {
+    margin: 0;
+    font-size: 13px;
+    color: #1e293b;
+    background: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid #e2e8f0;
+}
+
+.wacdmg-seo-note {
+    font-size: 12px !important;
+    color: #16a34a !important;
+    background: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+}
+
+/* =========================================================================
+   Image Panel
+   ========================================================================= */
+.wacdmg-image-panel .wacdmg-panel-header {
+    background: #fdf4ff;
+    border-color: #e9d5ff;
+    color: #6b21a8;
+}
+
+.wacdmg-image-controls {
+    padding: 14px 16px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.wacdmg-image-options {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.wacdmg-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #374151;
+    cursor: pointer;
+}
+
+.wacdmg-image-result {
+    padding: 14px 16px;
+    border-top: 1px solid #e9d5ff;
+    background: #fdf4ff;
+    text-align: center;
+}
+
+.wacdmg-generated-image {
+    max-width: 100%;
+    border-radius: 6px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+}
+
+.wacdmg-image-saved {
+    font-size: 12px;
+    color: #16a34a;
+    margin: 8px 0 0;
+    font-weight: 500;
+}
+
+/* =========================================================================
+   Responsive
+   ========================================================================= */
+@media (max-width: 782px) {
+    .wacdmg-generator-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .wacdmg-output-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }

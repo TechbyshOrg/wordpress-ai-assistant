@@ -14,8 +14,8 @@
     "sass-loader": "^16.0.5"
   },
   "scripts": {
-    "build": "webpack",
-    "watch": "webpack --watch",
+    "build": "webpack --mode production",
+    "watch": "webpack --mode development --watch",
     "start": "webpack serve --mode development --open"
   },
   "eslintConfig": {

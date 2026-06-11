@@ -1,18 +1,41 @@
 import { addFilter } from '@wordpress/hooks';
-import { Fragment, useRef } from '@wordpress/element';
+import { Fragment, useRef, useState } from '@wordpress/element';
 import { select } from '@wordpress/data';
 import { InspectorControls } from '@wordpress/block-editor';
-import { 
-    PanelBody, 
-    Button, 
-    TextareaControl, 
+import {
+    PanelBody,
+    Button,
+    TextareaControl,
     SelectControl,
     ToggleControl,
-    TextControl
+    TextControl,
+    Notice,
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
 import PostPromptGenerator from '../utils/PromptGenerator';
+
+const TONE_OPTIONS = [
+    { label: 'Persuasive', value: 'persuasive' },
+    { label: 'Professional', value: 'professional' },
+    { label: 'Friendly & Casual', value: 'friendly' },
+    { label: 'Luxury & Premium', value: 'luxury' },
+    { label: 'Minimal & Direct', value: 'minimal' },
+    { label: 'Informative', value: 'informative' },
+];
+
+const LANGUAGE_OPTIONS = [
+    { label: 'English', value: 'English' },
+    { label: 'Spanish', value: 'Spanish' },
+    { label: 'French', value: 'French' },
+    { label: 'German', value: 'German' },
+    { label: 'Italian', value: 'Italian' },
+    { label: 'Arabic', value: 'Arabic' },
+    { label: 'Hindi', value: 'Hindi' },
+    { label: 'Japanese', value: 'Japanese' },
+    { label: 'Chinese (Simplified)', value: 'Chinese (Simplified)' },
+    { label: 'Portuguese', value: 'Portuguese' },
+];
 
 // Add custom attributes to paragraph block
 function addCustomAttributes(settings, name) {
@@ -24,27 +47,14 @@ function addCustomAttributes(settings, name) {
         ...settings,
         attributes: {
             ...settings.attributes,
-            generatedContent: {
-                type: 'string',
-                default: ''
-            },
-            customPrompt: {
-                type: 'string',
-                default: ''
-            },
-            generationType: {
-                type: 'string',
-                default: ''
-            },
-            enableWordCount: {
-                type: 'boolean',
-                default: false
-            },
-            wordCount: {
-                type: 'number',
-                default: 100
-            }
-        }
+            generatedContent: { type: 'string', default: '' },
+            customPrompt:     { type: 'string', default: '' },
+            generationType:   { type: 'string', default: '' },
+            enableWordCount:  { type: 'boolean', default: false },
+            wordCount:        { type: 'number', default: 150 },
+            tone:             { type: 'string', default: 'persuasive' },
+            language:         { type: 'string', default: 'English' },
+        },
     };
 }
 
@@ -53,249 +63,202 @@ function addCustomInspectorControls(BlockEdit) {
     return function(props) {
         const { attributes, setAttributes, name } = props;
         const previousContentRef = useRef(attributes.content || '');
+        const [generating, setGenerating] = useState(false);
+        const [notice, setNotice] = useState({ text: '', status: '' });
 
         if (name !== 'core/paragraph') {
             return <BlockEdit {...props} />;
         }
 
-        const { 
-            generatedContent, 
-            customPrompt, 
+        const {
+            generatedContent,
+            customPrompt,
             generationType,
             enableWordCount,
             wordCount,
-            content
+            content,
+            tone,
+            language,
         } = attributes;
 
-        // Store previous content before generating new one
         const handleGenerateContent = async () => {
-            // Save current content as previous before generating new
-            previousContentRef.current = content || '';
+            if (!generationType) return;
 
-            if (!generationType) {
-                return;
-            }
+            previousContentRef.current = content || '';
+            setGenerating(true);
+            setNotice({ text: '', status: '' });
 
             let prompt = '';
-            let finalPrompt = '';
-            const promptGenerator = new PostPromptGenerator();
-            const postTitle = select('core/editor').getEditedPostAttribute('title');
+            const promptGenerator = new PostPromptGenerator({ tone, language });
+            const postTitle = select('core/editor').getEditedPostAttribute('title') || '';
 
             switch (generationType) {
                 case 'from_name':
-                    prompt = promptGenerator.descriptionPostTitle(postTitle || '');
-                    finalPrompt = enableWordCount
-                        ? `${prompt} Please ensure the response is no more than ${wordCount} words.`
-                        : prompt;
+                    prompt = promptGenerator.descriptionPostTitle(postTitle);
                     break;
                 case 'custom_prompt':
-                    if (!customPrompt) return;
+                    if (!customPrompt) { setGenerating(false); return; }
                     prompt = customPrompt;
-                    finalPrompt = enableWordCount
-                        ? `${prompt} Please ensure the response is no more than ${wordCount} words.`
-                        : prompt;
                     break;
                 case 'improve_data':
-                    prompt = promptGenerator.improveDescription(
-                        content || '',
-                        postTitle || ''
-                    );
-                    finalPrompt = enableWordCount
-                        ? `${prompt} Please ensure the response is no more than ${wordCount} words.`
-                        : prompt;
+                    prompt = promptGenerator.improveDescription(content || '', postTitle);
                     break;
                 case 'improve_with_prompt':
-                    if (!customPrompt) return;
-                    prompt = promptGenerator.improveDescriptionCustom(
-                        content || '',
-                        postTitle || '',
-                        customPrompt
-                    );
-                    finalPrompt = enableWordCount
-                        ? `${prompt} Please ensure the response is no more than ${wordCount} words.`
-                        : prompt;
+                    if (!customPrompt) { setGenerating(false); return; }
+                    prompt = promptGenerator.improveDescriptionCustom(content || '', postTitle, customPrompt);
+                    break;
+                case 'blog_outline':
+                    prompt = promptGenerator.blogOutline(postTitle);
                     break;
                 default:
+                    setGenerating(false);
                     return;
             }
 
+            const finalPrompt = enableWordCount
+                ? `${prompt} Please ensure the response is no more than ${wordCount} words.`
+                : prompt;
+
             try {
-                setAttributes({ generatedContent: 'Generating content...' });
-                callWpApi('/generate-paragraph-content', 'POST', {
+                const response = await callWpApi('/generate-paragraph-content', 'POST', {
                     prompt: finalPrompt,
                     method: generationType,
-                    word_count: enableWordCount ? wordCount : '',
-                    nonce: window.wacdmgParagraphBlockAjax?.nonce || ''
-                })
-                .then((response) => {
-                    if (response.success) {
-                        setAttributes({
-                            generatedContent: response.data.content,
-                            content: response.data.description
-                        });
-                    } else {
-                        setAttributes({ 
-                            generatedContent: 'Error generating content. Please try again.',
-                            content: 'Error generating content. Please try again.'
-                        });
-                        alert('Failed to generate content: ' + (response.data?.message || 'Unknown error'));
-                    }
-                })
-                .catch(() => {
-                    setAttributes({ 
-                        generatedContent: 'Network error. Please check your connection.',
-                        content: 'Network error. Please check your connection.'
+                    tone,
+                    language,
+                });
+
+                if (response.success) {
+                    setAttributes({
+                        generatedContent: response.data.description || response.data.content || '',
+                        content: response.data.description || response.data.content || '',
                     });
-                    alert('An error occurred while generating the content.');
-                });
+                    setNotice({ text: __('Content generated successfully!', 'wacdmg-ai-content-assistant'), status: 'success' });
+                } else {
+                    setNotice({ text: response.data?.message || __('Error generating content.', 'wacdmg-ai-content-assistant'), status: 'error' });
+                }
             } catch (error) {
-                setAttributes({ 
-                    generatedContent: 'Network error. Please check your connection.',
-                    content: 'Network error. Please check your connection.'
-                });
+                setNotice({ text: error.message || __('Network error. Please check your connection.', 'wacdmg-ai-content-assistant'), status: 'error' });
             }
+
+            setGenerating(false);
         };
 
-        // Handler to reuse previous content
         const handleReusePrevious = () => {
-            if (!window.confirm(__('Are you sure you want to reuse the previous content? This will replace the current content with the previous one.', 'wacdmg-ai-content-assistant'))) {
-                return;
-            }
+            if (!window.confirm(__('Replace current content with previous content?', 'wacdmg-ai-content-assistant'))) return;
             setAttributes({ content: previousContentRef.current });
-        };
-
-        // Handler to reset generated content to previous
-        const handleResetGeneratedToPrevious = () => {
-            setAttributes({ 
-                generatedContent: previousContentRef.current,
-                content: previousContentRef.current
-            });
         };
 
         return (
             <Fragment>
                 <InspectorControls>
+                    {/* AI Content Generator Panel */}
                     <PanelBody
                         title={__('AI Content Generator', 'wacdmg-ai-content-assistant')}
                         initialOpen={true}
-                        icon="edit"
                     >
                         <SelectControl
                             label={__('Generation Type', 'wacdmg-ai-content-assistant')}
                             value={generationType}
-                            help={__('Choose how you want to generate content', 'wacdmg-ai-content-assistant')}
                             options={[
-                                { label: 'Select generation type...', value: '' },
-                                { label: 'Generate from block name', value: 'from_name' },
-                                { label: 'Generate from custom prompt', value: 'custom_prompt' },
-                                { label: 'Improve existing data', value: 'improve_data' },
-                                { label: 'Improve with custom prompt', value: 'improve_with_prompt' }
+                                { label: 'Select type...', value: '' },
+                                { label: 'Generate from post title', value: 'from_name' },
+                                { label: 'Custom prompt', value: 'custom_prompt' },
+                                { label: 'Blog post outline', value: 'blog_outline' },
+                                { label: 'Improve existing content', value: 'improve_data' },
+                                { label: 'Improve with custom prompt', value: 'improve_with_prompt' },
                             ]}
-                            onChange={(value) => setAttributes({ generationType: value })}
+                            onChange={value => setAttributes({ generationType: value })}
                         />
 
                         {(generationType === 'custom_prompt' || generationType === 'improve_with_prompt') && (
                             <TextareaControl
                                 label={__('Custom Prompt', 'wacdmg-ai-content-assistant')}
-                                help={__('Enter specific instructions for content generation', 'wacdmg-ai-content-assistant')}
-                                placeholder={__('e.g., "Write a professional introduction about our company"', 'wacdmg-ai-content-assistant')}
+                                placeholder={__('Enter your instructions...', 'wacdmg-ai-content-assistant')}
                                 value={customPrompt}
-                                rows={4}
-                                onChange={(value) => setAttributes({ customPrompt: value })}
+                                rows={3}
+                                onChange={value => setAttributes({ customPrompt: value })}
                             />
                         )}
 
+                        <SelectControl
+                            label={__('Tone', 'wacdmg-ai-content-assistant')}
+                            value={tone}
+                            options={TONE_OPTIONS}
+                            onChange={value => setAttributes({ tone: value })}
+                        />
+
+                        <SelectControl
+                            label={__('Language', 'wacdmg-ai-content-assistant')}
+                            value={language}
+                            options={LANGUAGE_OPTIONS}
+                            onChange={value => setAttributes({ language: value })}
+                        />
+
                         <ToggleControl
-                            label={__('Enable Word Count', 'wacdmg-ai-content-assistant')}
-                            help={__('Set a specific word count for the generated content', 'wacdmg-ai-content-assistant')}
+                            label={__('Limit Word Count', 'wacdmg-ai-content-assistant')}
                             checked={enableWordCount}
-                            onChange={(value) => setAttributes({ enableWordCount: value })}
+                            onChange={value => setAttributes({ enableWordCount: value })}
                         />
 
                         {enableWordCount && (
                             <TextControl
-                                label={__('Word Count', 'wacdmg-ai-content-assistant')}
+                                label={__('Max Words', 'wacdmg-ai-content-assistant')}
                                 type="number"
                                 value={wordCount}
                                 min={50}
-                                max={1000}
-                                onChange={(value) => setAttributes({ wordCount: parseInt(value) || 100 })}
+                                max={2000}
+                                onChange={value => setAttributes({ wordCount: parseInt(value) || 150 })}
                             />
                         )}
 
-                        <div style={{ marginTop: '15px' }}>
+                        <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <Button
-                                isPrimary
+                                variant="primary"
                                 onClick={handleGenerateContent}
-                                disabled={!generationType || 
+                                isBusy={generating}
+                                disabled={generating || !generationType ||
                                     ((generationType === 'custom_prompt' || generationType === 'improve_with_prompt') && !customPrompt)}
                             >
-                                {__('Generate Content', 'wacdmg-ai-content-assistant')}
+                                {generating
+                                    ? __('Generating...', 'wacdmg-ai-content-assistant')
+                                    : __('Generate Content', 'wacdmg-ai-content-assistant')}
                             </Button>
-                        </div>
 
-                        {generatedContent && (
-                            <div style={{ 
-                                marginTop: '15px', 
-                                padding: '10px', 
-                                backgroundColor: '#f0f0f0', 
-                                borderRadius: '4px',
-                                fontSize: '12px'
-                            }}>
-                                <strong>{__('Generated Content Preview:', 'wacdmg-ai-content-assistant')}</strong>
-                                <p style={{ margin: '5px 0 0 0', color: '#666' }}>
-                                    {generatedContent.substring(0, 150)}...
-                                </p>
-                                <div style={{ marginTop: '10px' }}>
-                                    <Button
-                                        isSecondary
-                                        isSmall
-                                        onClick={handleResetGeneratedToPrevious}
-                                        style={{ marginRight: '10px' }}
-                                    >
-                                        {__('Reset Generated to Previous', 'wacdmg-ai-content-assistant')}
-                                    </Button>
-                                    <Button
-                                        isTertiary
-                                        isSmall
-                                        onClick={handleReusePrevious}
-                                    >
-                                        {__('Reuse Previous Content', 'wacdmg-ai-content-assistant')}
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-
-                        <div style={{ marginTop: '15px' }}>
-                            <Button
-                                isTertiary
-                                isSmall
-                                onClick={handleReusePrevious}
-                                style={{ marginTop: '10px' }}
-                            >
+                            <Button variant="secondary" isSmall onClick={handleReusePrevious}>
                                 {__('Reuse Previous Content', 'wacdmg-ai-content-assistant')}
                             </Button>
+
                             <Button
-                                isDestructive
+                                variant="tertiary"
                                 isSmall
+                                isDestructive
                                 onClick={() => {
-                                    setAttributes({ 
+                                    setAttributes({
                                         content: '',
                                         generatedContent: '',
                                         customPrompt: '',
                                         generationType: '',
                                         enableWordCount: false,
-                                        wordCount: 100
+                                        wordCount: 150,
                                     });
                                     previousContentRef.current = '';
+                                    setNotice({ text: '', status: '' });
                                 }}
                             >
-                                {__('Reset Settings', 'wacdmg-ai-content-assistant')}
+                                {__('Reset All', 'wacdmg-ai-content-assistant')}
                             </Button>
                         </div>
+
+                        {notice.text && (
+                            <div style={{ marginTop: '10px' }}>
+                                <Notice status={notice.status === 'success' ? 'success' : 'error'} isDismissible={false}>
+                                    {notice.text}
+                                </Notice>
+                            </div>
+                        )}
                     </PanelBody>
                 </InspectorControls>
-                
+
                 <BlockEdit {...props} />
             </Fragment>
         );

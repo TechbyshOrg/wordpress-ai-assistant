@@ -43,28 +43,33 @@
 
 const path = require('path');
 
-module.exports = {
-  entry: './src/index.jsx',
-  output: {
-    path: path.resolve(__dirname, '../assets/js'),
-    filename: 'app.js',
-  },
-  module: {
-    rules: [
-      {
-        test: /\.(js|jsx)$/,
-        exclude: /node_modules/,
-        use: 'babel-loader'
-      },
-      {
-        test: /\.css$/i,
-        use: ['style-loader', 'css-loader'],
-      }
-    ]
-  },
-  resolve: {
-    extensions: ['.js', '.jsx']
-  },
-  mode: 'development',
-  watch: true
+module.exports = (env, argv) => {
+  const isProduction = argv.mode === 'production';
+
+  return {
+    entry: './src/index.jsx',
+    output: {
+      path: path.resolve(__dirname, '../assets/js'),
+      filename: 'app.js',
+    },
+    module: {
+      rules: [
+        {
+          test: /\.(js|jsx)$/,
+          exclude: /node_modules/,
+          use: 'babel-loader'
+        },
+        {
+          test: /\.css$/i,
+          use: ['style-loader', 'css-loader'],
+        }
+      ]
+    },
+    resolve: {
+      extensions: ['.js', '.jsx']
+    },
+    mode: isProduction ? 'production' : 'development',
+    watch: !isProduction
+  };
 };
+

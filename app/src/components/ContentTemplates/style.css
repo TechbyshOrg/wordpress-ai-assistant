@@ -1,0 +1,35 @@
+/* ContentTemplates CSS */
+.wacdmg-tpl-wrap { max-width: 900px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+.wacdmg-tpl-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.wacdmg-tpl-header h2 { font-size: 20px; font-weight: 700; color: #1e293b; margin: 0 0 5px; }
+.wacdmg-tpl-header p { font-size: 13px; color: #64748b; margin: 0; }
+.wacdmg-tpl-add-btn { padding: 9px 18px; background: #2271b1; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+.wacdmg-tpl-add-btn:hover { background: #1a5fa1; }
+.wacdmg-tpl-form-card { background: #fff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(34,113,177,0.08); }
+.wacdmg-tpl-form-card h3 { margin: 0 0 16px; font-size: 16px; color: #1e293b; }
+.wacdmg-tpl-field { margin-bottom: 14px; }
+.wacdmg-tpl-field label { display: block; font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+.wacdmg-tpl-input, .wacdmg-tpl-select { width: 100%; max-width: 400px; padding: 9px 12px; border: 1.5px solid #d1d5db; border-radius: 6px; font-size: 13px; color: #1e293b; }
+.wacdmg-tpl-textarea { width: 100%; padding: 10px 12px; border: 1.5px solid #d1d5db; border-radius: 6px; font-size: 13px; color: #1e293b; resize: vertical; font-family: inherit; }
+.wacdmg-tpl-save-btn { padding: 9px 18px; background: #2271b1; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.wacdmg-tpl-cancel-btn { padding: 9px 18px; background: #fff; color: #64748b; border: 1.5px solid #d1d5db; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.wacdmg-tpl-filters { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.wacdmg-tpl-filter-btn { padding: 6px 12px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #fff; font-size: 12px; cursor: pointer; color: #64748b; transition: all 0.2s; }
+.wacdmg-tpl-filter-btn.active { background: #2271b1; color: #fff; border-color: #2271b1; }
+.wacdmg-tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.wacdmg-tpl-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 16px; transition: box-shadow 0.2s, transform 0.2s; }
+.wacdmg-tpl-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
+.wacdmg-tpl-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.wacdmg-tpl-name { font-size: 14px; font-weight: 700; color: #1e293b; }
+.wacdmg-tpl-type-badge { font-size: 10px; background: #eff6ff; color: #2271b1; padding: 2px 8px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+.wacdmg-tpl-prompt-preview { font-size: 12px; color: #64748b; margin: 0 0 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.wacdmg-tpl-card-actions { display: flex; gap: 8px; }
+.wacdmg-tpl-action-btn { padding: 5px 10px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1.5px solid; transition: background 0.15s; }
+.wacdmg-tpl-copy-btn { background: #eff6ff; color: #2271b1; border-color: #bfdbfe; }
+.wacdmg-tpl-copy-btn:hover { background: #dbeafe; }
+.wacdmg-tpl-delete-btn { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+.wacdmg-tpl-delete-btn:hover { background: #fee2e2; }
+.wacdmg-tpl-message { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; }
+.wacdmg-tpl-message.success { background: #f0fdf4; border: 1px solid #86efac; color: #14532d; }
+.wacdmg-tpl-message.error { background: #fef2f2; border: 1px solid #fca5a5; color: #7f1d1d; }
+.wacdmg-tpl-empty, .wacdmg-tpl-loading { text-align: center; padding: 40px; color: #94a3b8; font-size: 14px; background: #f8fafc; border-radius: 10px; border: 2px dashed #cbd5e1; }
