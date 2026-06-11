@@ -2,7 +2,6 @@
 /.github
 /.gitignore
 /.sample-env
-/.wordpress-org
 /app
 /block-app
 /.distignore
@@ -99,7 +98,6 @@ CONTRIBUTING.md
 CODE_OF_CONDUCT.md
 SECURITY.md
 CHANGELOG.md
-.wordpress-org/
 
 # =============================================
 # Misc
