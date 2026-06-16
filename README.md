@@ -5,7 +5,7 @@ Tags: ai writer, content generator, seo meta, woocommerce description, openroute
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.2
-Stable tag: 2.0.0
+Stable tag: 2.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -133,6 +133,9 @@ Currently, you can generate and optimize descriptions, titles, tags, and images 
 Rate limits configured in the Settings menu apply globally to all users on the site to safeguard your API budget. Only users with administrator privileges can modify settings or view the Usage Log.
 
 == Changelog ==
+
+= 2.0.1 =
+* Fixed several general bugs and made improvements.
 
 = 2.0.0 =
 * Major release: Added OpenRouter API provider support.
