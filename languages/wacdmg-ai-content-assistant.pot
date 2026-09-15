@@ -2,7 +2,7 @@
 # This file is distributed under the GPLv2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: AI Content & Meta Assistant 1.0.0\n"
+"Project-Id-Version: AI Content & Meta Assistant 2.1.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/wp-ai-content-description-meta-generator\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"

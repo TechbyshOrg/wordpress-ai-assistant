@@ -20,3 +20,4 @@ jobs:
           SVN_PASSWORD: ${{ secrets.WP_SVN_PASSWORD }}
           SVN_USERNAME: ${{ secrets.WP_SVN_USERNAME }}
           SLUG: wacdmg-ai-content-assistant
+          ASSETS_DIR: .wordpress-org

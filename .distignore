@@ -1,57 +1,53 @@
-/.git
-/.github
-/.gitignore
-/.sample-env
-/app
-/block-app
-/.distignore
-
-
-# .distignore
-# Files and directories listed here will NOT be deployed to WordPress.org SVN.
-# Syntax is the same as .gitignore.
+# Files and directories listed here are NOT deployed to WordPress.org SVN trunk
+# and are omitted from the GitHub release zip. Syntax matches WP-CLI / 10up deploy.
+# Directory assets in .wordpress-org are copied to SVN /assets/ by the deploy action,
+# not into the plugin folder.
 
 # =============================================
-# Development & Build Source Files
+# Git, GitHub, and local tooling
 # =============================================
-react-admin/
-/react-admin
+.git
+.github
+.gitignore
+.distignore
+.sample-env
+.cursor
+.vscode
+.idea
+.editorconfig
+*.code-workspace
 
 # =============================================
-# Node / NPM / Yarn
+# WordPress.org listing assets (banners, icons, screenshots)
+# Deployed to SVN assets/, not plugin trunk
 # =============================================
-node_modules/
+.wordpress-org
+
+# =============================================
+# GitHub-only docs (WordPress.org uses readme.txt)
+# =============================================
+README.md
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+CHANGELOG.md
+
+# =============================================
+# JS source — compiled files live in assets/js
+# =============================================
+app
+block-app
+node_modules
 npm-debug.log
 yarn-error.log
 yarn.lock
 package-lock.json
+package.json
 
 # =============================================
-# Git & GitHub
+# Tests, linters, and build configs
 # =============================================
-.git/
-.gitignore
-.github/
-
-# =============================================
-# Editor & IDE Config
-# =============================================
-.vscode/
-.idea/
-*.code-workspace
-.editorconfig
-
-# =============================================
-# OS Generated Files
-# =============================================
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# =============================================
-# Testing & CI
-# =============================================
-tests/
+tests
 phpunit.xml
 phpunit.xml.dist
 .phpunit.result.cache
@@ -65,46 +61,34 @@ babel.config.js
 .stylelintrc
 .stylelintignore
 .browserslistrc
+webpack.config.js
+Gruntfile.js
+Gulpfile.js
+Makefile
+.webpack
+phpcs.xml
+phpcs.xml.dist
+phpstan.neon
+phpstan.neon.dist
 
 # =============================================
-# Environment & Local Config
+# Environment and generated files
 # =============================================
 .env
 .env.local
 .env.production
 .env.development
 *.local
+*.map
+*.LICENSE.txt
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
 
 # =============================================
-# Build Tools / Config Files
-# =============================================
-webpack.config.js
-Gruntfile.js
-Gulpfile.js
-Makefile
-.webpack/
-
-# =============================================
-# Composer (if used)
+# Composer (if added later)
 # =============================================
 composer.json
 composer.lock
-vendor/
-
-# =============================================
-# Documentation & Extras (not needed on WP.org)
-# =============================================
-CONTRIBUTING.md
-CODE_OF_CONDUCT.md
-SECURITY.md
-CHANGELOG.md
-
-# =============================================
-# Misc
-# =============================================
-*.map
-*.log
-phpcs.xml
-phpcs.xml.dist
-phpstan.neon
-phpstan.neon.dist
+vendor

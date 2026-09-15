@@ -1,9 +1,12 @@
 <?php
-/*
-Plugin Name: AI Content & Meta Assistant
-Plugin URI: https://wordpress.org/plugins/smart-ai-assistant-content/
-Description: Smart AI content generator for WordPress and WooCommerce — create product descriptions, blog posts, SEO meta, and AI images with a click. Supports OpenAI, Google Gemini, Anthropic Claude, Mistral, and Groq.
- * Version: 2.0.1
+/**
+ * Plugin Name: AI Content & Meta Assistant
+ * Plugin URI: https://wordpress.org/plugins/smart-ai-assistant-content/
+ * Description: AI writer for WordPress and WooCommerce. Generate product descriptions, SEO meta, blog content, and images with ChatGPT, Gemini, or Claude.
+ * Version: 2.1.0
+ * Requires at least: 6.0
+ * Tested up to: 7.1
+ * Requires PHP: 7.4
  * Author: Techbysh
  * Author URI: https://techbysh.com
  * License: GPLv2 or later
@@ -19,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
 define( 'WACDMG_PLUGIN_FILE', __FILE__ );
 define( 'WACDMG_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WACDMG_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'WACDMG_PLUGIN_VERSION', '2.0.1' );
+define( 'WACDMG_PLUGIN_VERSION', '2.1.0' );
 define( 'WACDMG_API_NAMESPACE', 'wacdmg/v1' );
 
 // Core classes.
