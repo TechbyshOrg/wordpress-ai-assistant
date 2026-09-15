@@ -1,5 +1,5 @@
 import { addFilter } from '@wordpress/hooks';
-import { Fragment, useRef, useState } from '@wordpress/element';
+import { Fragment, useRef, useState, useEffect } from '@wordpress/element';
 import { select } from '@wordpress/data';
 import { InspectorControls } from '@wordpress/block-editor';
 import {
@@ -37,6 +37,27 @@ const LANGUAGE_OPTIONS = [
     { label: 'Portuguese', value: 'Portuguese' },
 ];
 
+let cachedTemplates = null;
+let templatesPromise = null;
+
+function loadTemplates() {
+    if (cachedTemplates) {
+        return Promise.resolve(cachedTemplates);
+    }
+    if (!templatesPromise) {
+        templatesPromise = callWpApi('/get-templates', 'GET')
+            .then(res => {
+                cachedTemplates = (res.success && Array.isArray(res.data)) ? res.data : [];
+                return cachedTemplates;
+            })
+            .catch(() => {
+                templatesPromise = null;
+                return [];
+            });
+    }
+    return templatesPromise;
+}
+
 // Add custom attributes to paragraph block
 function addCustomAttributes(settings, name) {
     if (name !== 'core/paragraph') {
@@ -65,6 +86,16 @@ function addCustomInspectorControls(BlockEdit) {
         const previousContentRef = useRef(attributes.content || '');
         const [generating, setGenerating] = useState(false);
         const [notice, setNotice] = useState({ text: '', status: '' });
+        const [templates, setTemplates] = useState([]);
+        const [selectedTemplate, setSelectedTemplate] = useState('');
+        const abortRef = useRef(null);
+
+        useEffect(() => {
+            if (name !== 'core/paragraph') {
+                return;
+            }
+            loadTemplates().then(setTemplates);
+        }, [name]);
 
         if (name !== 'core/paragraph') {
             return <BlockEdit {...props} />;
@@ -119,13 +150,18 @@ function addCustomInspectorControls(BlockEdit) {
                 ? `${prompt} Please ensure the response is no more than ${wordCount} words.`
                 : prompt;
 
+            if (abortRef.current) {
+                abortRef.current.abort();
+            }
+            abortRef.current = new AbortController();
+
             try {
                 const response = await callWpApi('/generate-paragraph-content', 'POST', {
                     prompt: finalPrompt,
                     method: generationType,
                     tone,
                     language,
-                });
+                }, { signal: abortRef.current.signal });
 
                 if (response.success) {
                     setAttributes({
@@ -137,7 +173,9 @@ function addCustomInspectorControls(BlockEdit) {
                     setNotice({ text: response.data?.message || __('Error generating content.', 'wacdmg-ai-content-assistant'), status: 'error' });
                 }
             } catch (error) {
-                setNotice({ text: error.message || __('Network error. Please check your connection.', 'wacdmg-ai-content-assistant'), status: 'error' });
+                if (error.name !== 'AbortError') {
+                    setNotice({ text: error.message || __('Network error. Please check your connection.', 'wacdmg-ai-content-assistant'), status: 'error' });
+                }
             }
 
             setGenerating(false);
@@ -194,6 +232,29 @@ function addCustomInspectorControls(BlockEdit) {
                             onChange={value => setAttributes({ language: value })}
                         />
 
+                        {templates.length > 0 && (
+                            <SelectControl
+                                label={__('Use template', 'wacdmg-ai-content-assistant')}
+                                value={selectedTemplate}
+                                options={[
+                                    { label: __('Select template...', 'wacdmg-ai-content-assistant'), value: '' },
+                                    ...templates.map(tpl => ({ label: tpl.name, value: tpl.id })),
+                                ]}
+                                onChange={value => {
+                                    setSelectedTemplate(value);
+                                    const tpl = templates.find(t => t.id === value);
+                                    if (!tpl) return;
+                                    const postTitle = select('core/editor').getEditedPostAttribute('title') || '';
+                                    const filled = String(tpl.prompt || '')
+                                        .replace(/\[PRODUCT_NAME\]/gi, postTitle)
+                                        .replace(/\[TITLE\]/gi, postTitle)
+                                        .replace(/\[CONTENT\]/gi, content || '')
+                                        .replace(/\[KEYWORDS\]/gi, '');
+                                    setAttributes({ generationType: 'custom_prompt', customPrompt: filled });
+                                }}
+                            />
+                        )}
+
                         <ToggleControl
                             label={__('Limit Word Count', 'wacdmg-ai-content-assistant')}
                             checked={enableWordCount}
@@ -223,6 +284,19 @@ function addCustomInspectorControls(BlockEdit) {
                                     ? __('Generating...', 'wacdmg-ai-content-assistant')
                                     : __('Generate Content', 'wacdmg-ai-content-assistant')}
                             </Button>
+
+                            {generating && (
+                                <Button
+                                    variant="secondary"
+                                    isSmall
+                                    onClick={() => {
+                                        abortRef.current?.abort();
+                                        setGenerating(false);
+                                    }}
+                                >
+                                    {__('Cancel', 'wacdmg-ai-content-assistant')}
+                                </Button>
+                            )}
 
                             <Button variant="secondary" isSmall onClick={handleReusePrevious}>
                                 {__('Reuse Previous Content', 'wacdmg-ai-content-assistant')}

@@ -5,4 +5,6 @@ import App from './App';
 import './wpBlock/paragraph-block-extension';
 import './wpBlock/seo-panel-extension';
 import './wpBlock/ai-image-panel';
+import './wpBlock/image-alt-extension';
+import './wpBlock/product-ai-panel';
 

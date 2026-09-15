@@ -5,13 +5,15 @@
  * and writing it directly to Yoast SEO / Rank Math / AIOSEO.
  */
 import { registerPlugin } from '@wordpress/plugins';
-import { PluginDocumentSettingPanel } from '@wordpress/edit-post';
-import { useState } from '@wordpress/element';
+import { useState, useRef } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
 import { Button, TextControl, TextareaControl, Notice, Spinner } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
 import PostPromptGenerator from '../utils/PromptGenerator';
+import { getPluginDocumentSettingPanel } from '../utils/documentPanel';
+
+const PluginDocumentSettingPanel = getPluginDocumentSettingPanel();
 
 const AISeoPanel = () => {
     const [loading, setLoading]     = useState(false);
@@ -19,6 +21,7 @@ const AISeoPanel = () => {
     const [seoTitle, setSeoTitle]   = useState('');
     const [seoDesc, setSeoDesc]     = useState('');
     const [keywords, setKeywords]   = useState('');
+    const abortRef = useRef(null);
 
     const postTitle   = useSelect(select => select('core/editor').getEditedPostAttribute('title') || '');
     const postId      = useSelect(select => select('core/editor').getCurrentPostId());
@@ -40,6 +43,10 @@ const AISeoPanel = () => {
 
         setLoading(true);
         setNotice({ text: '', status: '' });
+        if (abortRef.current) {
+            abortRef.current.abort();
+        }
+        abortRef.current = new AbortController();
 
         const generator = new PostPromptGenerator({ tone: 'professional', language: 'English' });
 
@@ -49,7 +56,7 @@ const AISeoPanel = () => {
                 desc_prompt:  generator.seoMetaDescription(postTitle, postContent, keywords),
                 kw_prompt:    generator.seoFocusKeywords(postTitle, postContent),
                 post_id:      postId,
-            });
+            }, { signal: abortRef.current.signal });
 
             if (response.success) {
                 const data = response.data;
@@ -69,7 +76,9 @@ const AISeoPanel = () => {
                 });
             }
         } catch (error) {
-            setNotice({ text: error.message || __('Network error. Check your AI settings.', 'wacdmg-ai-content-assistant'), status: 'error' });
+            if (error.name !== 'AbortError') {
+                setNotice({ text: error.message || __('Network error. Check your AI settings.', 'wacdmg-ai-content-assistant'), status: 'error' });
+            }
         }
 
         setLoading(false);
@@ -103,6 +112,15 @@ const AISeoPanel = () => {
             >
                 {loading ? <><Spinner /> {__('Generating...', 'wacdmg-ai-content-assistant')}</> : __('Generate SEO Meta', 'wacdmg-ai-content-assistant')}
             </Button>
+            {loading && (
+                <Button
+                    variant="secondary"
+                    onClick={() => { abortRef.current?.abort(); setLoading(false); }}
+                    style={{ marginBottom: '12px', width: '100%', justifyContent: 'center' }}
+                >
+                    {__('Cancel', 'wacdmg-ai-content-assistant')}
+                </Button>
+            )}
 
             {notice.text && (
                 <Notice status={notice.status === 'success' ? 'success' : 'error'} isDismissible={false}>
@@ -145,4 +163,6 @@ const AISeoPanel = () => {
     );
 };
 
-registerPlugin('wacdmg-seo-panel', { render: AISeoPanel });
+if (PluginDocumentSettingPanel) {
+    registerPlugin('wacdmg-seo-panel', { render: AISeoPanel });
+}

@@ -33,6 +33,7 @@ class WACDMG_Admin_API {
      */
     public function wacdmg_init_hooks() {
         add_action( 'rest_api_init', array( $this, 'wacdmg_register_routes' ) );
+        add_action( 'transition_post_status', array( $this, 'wacdmg_auto_seo_on_publish' ), 20, 3 );
     }
 
     /**
@@ -41,30 +42,47 @@ class WACDMG_Admin_API {
      * @since 1.0.0
      */
     public function wacdmg_register_routes() {
-        // Text generation endpoints
-        $this->wacdmg_register_route( '/generate-description', array( $this, 'wacdmg_generate_description' ), 'POST' );
-        $this->wacdmg_register_route( '/generate-paragraph-content', array( $this, 'wacdmg_generate_description' ), 'POST' );
-        $this->wacdmg_register_route( '/generate-short-description', array( $this, 'wacdmg_generate_short_description' ), 'POST' );
-        $this->wacdmg_register_route( '/generate-tags', array( $this, 'wacdmg_generate_tags' ), 'POST' );
-        $this->wacdmg_register_route( '/generate-seo-meta', array( $this, 'wacdmg_generate_seo_meta' ), 'POST' );
-        $this->wacdmg_register_route( '/generate-alt-text', array( $this, 'wacdmg_generate_alt_text' ), 'POST' );
-        $this->wacdmg_register_route( '/chat', array( $this, 'wacdmg_chat' ), 'POST' );
+        $can_generate = array( $this, 'wacdmg_can_generate' );
+        $can_manage   = array( $this, 'wacdmg_can_manage_settings' );
 
-        // Image generation endpoints
-        $this->wacdmg_register_route( '/generate-image', array( $this, 'wacdmg_generate_image' ), 'POST' );
+        // Text generation endpoints — editors and shop managers.
+        $this->wacdmg_register_route( '/generate-description', array( $this, 'wacdmg_generate_description' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/generate-paragraph-content', array( $this, 'wacdmg_generate_description' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/generate-short-description', array( $this, 'wacdmg_generate_short_description' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/generate-tags', array( $this, 'wacdmg_generate_tags' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/generate-seo-meta', array( $this, 'wacdmg_generate_seo_meta' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/generate-alt-text', array( $this, 'wacdmg_generate_alt_text' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/chat', array( $this, 'wacdmg_chat' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/generate-image', array( $this, 'wacdmg_generate_image' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/get-templates', array( $this, 'wacdmg_get_templates' ), 'GET', $can_generate );
 
-        // Settings endpoints
-        $this->wacdmg_register_route( '/save-settings', array( $this, 'wacdmg_save_settings' ), 'POST' );
-        $this->wacdmg_register_route( '/get-settings', array( $this, 'wacdmg_get_settings' ), 'GET' );
-        $this->wacdmg_register_route( '/test-connection', array( $this, 'wacdmg_test_connection' ), 'POST' );
-        $this->wacdmg_register_route( '/fetch-models', array( $this, 'wacdmg_fetch_models' ), 'POST' );
-        $this->wacdmg_register_route( '/get-usage', array( $this, 'wacdmg_get_usage' ), 'GET' );
-        $this->wacdmg_register_route( '/reset-usage', array( $this, 'wacdmg_reset_usage' ), 'POST' );
+        // Settings, usage, and template CRUD — administrators only.
+        $this->wacdmg_register_route( '/save-settings', array( $this, 'wacdmg_save_settings' ), 'POST', $can_manage );
+        $this->wacdmg_register_route( '/get-settings', array( $this, 'wacdmg_get_settings' ), 'GET', $can_manage );
+        $this->wacdmg_register_route( '/test-connection', array( $this, 'wacdmg_test_connection' ), 'POST', $can_manage );
+        $this->wacdmg_register_route( '/fetch-models', array( $this, 'wacdmg_fetch_models' ), 'POST', $can_manage );
+        $this->wacdmg_register_route( '/get-usage', array( $this, 'wacdmg_get_usage' ), 'GET', $can_manage );
+        $this->wacdmg_register_route( '/reset-usage', array( $this, 'wacdmg_reset_usage' ), 'POST', $can_manage );
+        $this->wacdmg_register_route( '/save-template', array( $this, 'wacdmg_save_template' ), 'POST', $can_manage );
+        $this->wacdmg_register_route( '/delete-template', array( $this, 'wacdmg_delete_template' ), 'POST', $can_manage );
+    }
 
-        // Templates endpoints
-        $this->wacdmg_register_route( '/save-template', array( $this, 'wacdmg_save_template' ), 'POST' );
-        $this->wacdmg_register_route( '/get-templates', array( $this, 'wacdmg_get_templates' ), 'GET' );
-        $this->wacdmg_register_route( '/delete-template', array( $this, 'wacdmg_delete_template' ), 'POST' );
+    /**
+     * Whether the current user may generate AI content.
+     *
+     * @return bool
+     */
+    public function wacdmg_can_generate() {
+        return current_user_can( 'edit_posts' ) || current_user_can( 'edit_products' );
+    }
+
+    /**
+     * Whether the current user may manage plugin settings.
+     *
+     * @return bool
+     */
+    public function wacdmg_can_manage_settings() {
+        return current_user_can( 'manage_options' );
     }
 
     /**
@@ -75,13 +93,94 @@ class WACDMG_Admin_API {
      * @param string          $method     The HTTP method (default: 'GET').
      * @param callable|string $permission The permission callback.
      */
-    public function wacdmg_register_route( $route, $callback, $method = 'GET', $permission = '__return_true' ) {
+    public function wacdmg_register_route( $route, $callback, $method = 'GET', $permission = null ) {
+        if ( null === $permission ) {
+            $permission = array( $this, 'wacdmg_can_manage_settings' );
+        }
         $namespace = defined( 'WACDMG_API_NAMESPACE' ) ? WACDMG_API_NAMESPACE : 'wacdmg/v1';
         register_rest_route( $namespace, $route, array(
             'methods'             => $method,
             'callback'            => $callback,
             'permission_callback' => $permission,
         ) );
+    }
+
+    /**
+     * Keep a stored API key when the UI sends a masked or empty value.
+     *
+     * @param mixed $incoming      Value from the settings form.
+     * @param array $existing      Previously saved credentials.
+     * @param array $existing_keys Keys to read from $existing, in priority order.
+     * @return string
+     */
+    private function wacdmg_resolve_saved_key( $incoming, $existing, $existing_keys ) {
+        $incoming = is_string( $incoming ) ? $incoming : '';
+        if ( $incoming === '' || strpos( $incoming, '•' ) !== false ) {
+            foreach ( $existing_keys as $key ) {
+                if ( ! empty( $existing[ $key ] ) && is_string( $existing[ $key ] ) && strpos( $existing[ $key ], '•' ) === false ) {
+                    return $existing[ $key ];
+                }
+            }
+            return '';
+        }
+        return sanitize_text_field( $incoming );
+    }
+
+    /**
+     * Build a REST error payload, preserving HTTP 429 for rate limits.
+     *
+     * @param array $result Result array with error/code keys.
+     * @return WP_REST_Response
+     */
+    private function wacdmg_error_rest_response( $result ) {
+        $code = isset( $result['code'] ) ? intval( $result['code'] ) : 500;
+        if ( $code < 400 ) {
+            $code = 500;
+        }
+        return new WP_REST_Response( array(
+            'success' => false,
+            'data'    => array( 'message' => isset( $result['error'] ) ? $result['error'] : 'Unknown error.' ),
+        ), $code );
+    }
+
+    /**
+     * Whether today's successful generations have reached the configured cap.
+     *
+     * @return bool
+     */
+    private function wacdmg_is_over_daily_limit() {
+        $creds = get_option( 'wacdmg_ai_creds', array() );
+        $limit = isset( $creds['rate_limit_day'] ) ? intval( $creds['rate_limit_day'] ) : 100;
+        if ( $limit <= 0 ) {
+            return false;
+        }
+
+        $usage = get_option( 'wacdmg_usage', array() );
+        $today = current_time( 'Y-m-d' );
+        $today_total = 0;
+        if ( ! empty( $usage['daily'][ $today ] ) && is_array( $usage['daily'][ $today ] ) ) {
+            $today_total = array_sum( $usage['daily'][ $today ] );
+        }
+
+        return $today_total >= $limit;
+    }
+
+    /**
+     * Rate-limit error array, or null when under the cap.
+     *
+     * @return array|null
+     */
+    private function wacdmg_get_rate_limit_error() {
+        if ( ! $this->wacdmg_is_over_daily_limit() ) {
+            return null;
+        }
+        $creds = get_option( 'wacdmg_ai_creds', array() );
+        $limit = intval( $creds['rate_limit_day'] ?? 100 );
+        return array(
+            'success' => false,
+            'error'   => sprintf( 'Daily generation limit of %d reached. Increase the limit in Settings or try again tomorrow.', $limit ),
+            'code'    => 429,
+        );
     }
 
     // =========================================================================
@@ -104,27 +203,31 @@ class WACDMG_Admin_API {
             ), 400 );
         }
 
+        $existing = get_option( 'wacdmg_ai_creds', array() );
+        if ( ! is_array( $existing ) ) {
+            $existing = array();
+        }
+
         // Build settings array - support multiple API keys
         $settingsData = array(
             'provider'            => sanitize_text_field( $formData['provider'] ),
             'model'               => sanitize_text_field( $formData['model'] ?? '' ),
-            'chatgpt_key'         => sanitize_text_field( $formData['chatgptKey'] ?? '' ),
-            'groq_key'            => sanitize_text_field( $formData['groqKey'] ?? '' ),
-            'gemini_key'          => sanitize_text_field( $formData['geminiKey'] ?? '' ),
-            'claude_key'          => sanitize_text_field( $formData['claudeKey'] ?? '' ),
-            'mistral_key'         => sanitize_text_field( $formData['mistralKey'] ?? '' ),
-            'openrouter_key'      => sanitize_text_field( $formData['openrouterKey'] ?? '' ),
+            'chatgpt_key'         => $this->wacdmg_resolve_saved_key( $formData['chatgptKey'] ?? '', $existing, array( 'chatgpt_key', 'apiKey' ) ),
+            'groq_key'            => $this->wacdmg_resolve_saved_key( $formData['groqKey'] ?? '', $existing, array( 'groq_key' ) ),
+            'gemini_key'          => $this->wacdmg_resolve_saved_key( $formData['geminiKey'] ?? '', $existing, array( 'gemini_key' ) ),
+            'claude_key'          => $this->wacdmg_resolve_saved_key( $formData['claudeKey'] ?? '', $existing, array( 'claude_key' ) ),
+            'mistral_key'         => $this->wacdmg_resolve_saved_key( $formData['mistralKey'] ?? '', $existing, array( 'mistral_key' ) ),
+            'openrouter_key'      => $this->wacdmg_resolve_saved_key( $formData['openrouterKey'] ?? '', $existing, array( 'openrouter_key' ) ),
             'image_provider'      => sanitize_text_field( $formData['imageProvider'] ?? 'dalle' ),
-            'together_key'        => sanitize_text_field( $formData['togetherKey'] ?? '' ),
+            'together_key'        => $this->wacdmg_resolve_saved_key( $formData['togetherKey'] ?? '', $existing, array( 'together_key' ) ),
             'image_size'          => sanitize_text_field( $formData['imageSize'] ?? '1024x1024' ),
             'image_quality'       => sanitize_text_field( $formData['imageQuality'] ?? 'standard' ),
             'image_style'         => sanitize_text_field( $formData['imageStyle'] ?? 'vivid' ),
             'seo_integration'     => sanitize_text_field( $formData['seoIntegration'] ?? 'auto' ),
             'auto_seo_on_publish' => ! empty( $formData['autoSeoOnPublish'] ),
             'rate_limit_day'      => intval( $formData['rateLimitDay'] ?? 100 ),
-            // Legacy field for backwards compat
-            'apiKey'              => sanitize_text_field( $formData['chatgptKey'] ?? '' ),
         );
+        $settingsData['apiKey'] = $settingsData['chatgpt_key'];
 
         update_option( 'wacdmg_ai_creds', $settingsData );
 
@@ -323,9 +426,9 @@ class WACDMG_Admin_API {
         $language = sanitize_text_field( $request->get_param( 'language' ) ?: 'English' );
 
         $result = $this->wacdmg_run_ai_prompt( $prompt );
-        $this->wacdmg_log_usage( 'description' );
 
         if ( $result['success'] ) {
+            $this->wacdmg_log_usage( 'description' );
             return new WP_REST_Response( array(
                 'success' => true,
                 'data'    => array(
@@ -335,10 +438,7 @@ class WACDMG_Admin_API {
             ), 200 );
         }
 
-        return new WP_REST_Response( array(
-            'success' => false,
-            'data'    => array( 'message' => $result['error'] ),
-        ), 500 );
+        return $this->wacdmg_error_rest_response( $result );
     }
 
     /**
@@ -350,19 +450,16 @@ class WACDMG_Admin_API {
     public function wacdmg_generate_short_description( WP_REST_Request $request ) {
         $prompt = $request->get_param( 'prompt' );
         $result = $this->wacdmg_run_ai_prompt( $prompt );
-        $this->wacdmg_log_usage( 'short_description' );
 
         if ( $result['success'] ) {
+            $this->wacdmg_log_usage( 'short_description' );
             return new WP_REST_Response( array(
                 'success' => true,
                 'data'    => array( 'short_description' => $result['description'] ),
             ), 200 );
         }
 
-        return new WP_REST_Response( array(
-            'success' => false,
-            'data'    => array( 'message' => $result['error'] ),
-        ), 500 );
+        return $this->wacdmg_error_rest_response( $result );
     }
 
     /**
@@ -372,30 +469,69 @@ class WACDMG_Admin_API {
      * @return WP_REST_Response
      */
     public function wacdmg_generate_tags( WP_REST_Request $request ) {
-        $prompt = $request->get_param( 'prompt' );
-        $result = $this->wacdmg_run_ai_prompt( $prompt );
-        $this->wacdmg_log_usage( 'tags' );
+        $post_id = intval( $request->get_param( 'post_id' ) );
+        $apply   = (bool) $request->get_param( 'apply' );
+        $incoming_tags = $request->get_param( 'tags' );
 
-        if ( $result['success'] ) {
-            // Parse comma-separated tags from AI response
-            $raw  = strip_tags( $result['description'] );
-            $tags = array_map( 'trim', explode( ',', $raw ) );
-            $tags = array_filter( $tags );
-            $tags = array_values( $tags );
-
+        if ( $apply && is_array( $incoming_tags ) && $post_id ) {
+            $tags = array_values( array_filter( array_map( 'sanitize_text_field', $incoming_tags ) ) );
+            $applied = $this->wacdmg_apply_tags_to_post( $post_id, $tags );
             return new WP_REST_Response( array(
                 'success' => true,
                 'data'    => array(
-                    'tags' => $tags,
-                    'raw'  => $raw,
+                    'tags'    => $tags,
+                    'applied' => $applied,
                 ),
             ), 200 );
         }
 
-        return new WP_REST_Response( array(
-            'success' => false,
-            'data'    => array( 'message' => $result['error'] ),
-        ), 500 );
+        $prompt = $request->get_param( 'prompt' );
+        $result = $this->wacdmg_run_ai_prompt( $prompt );
+
+        if ( $result['success'] ) {
+            $this->wacdmg_log_usage( 'tags' );
+            $raw  = wp_strip_all_tags( $result['description'] );
+            $tags = array_map( 'trim', explode( ',', $raw ) );
+            $tags = array_filter( $tags );
+            $tags = array_values( $tags );
+
+            $applied = false;
+            if ( $apply && $post_id ) {
+                $applied = $this->wacdmg_apply_tags_to_post( $post_id, $tags );
+            }
+
+            return new WP_REST_Response( array(
+                'success' => true,
+                'data'    => array(
+                    'tags'    => $tags,
+                    'raw'     => $raw,
+                    'applied' => $applied,
+                ),
+            ), 200 );
+        }
+
+        return $this->wacdmg_error_rest_response( $result );
+    }
+
+    /**
+     * Assign generated tags to a post or product.
+     *
+     * @param int   $post_id Post ID.
+     * @param array $tags    Tag names.
+     * @return bool
+     */
+    private function wacdmg_apply_tags_to_post( $post_id, $tags ) {
+        if ( ! $post_id || empty( $tags ) || ! current_user_can( 'edit_post', $post_id ) ) {
+            return false;
+        }
+        $taxonomy = ( get_post_type( $post_id ) === 'product' && taxonomy_exists( 'product_tag' ) )
+            ? 'product_tag'
+            : 'post_tag';
+        if ( ! taxonomy_exists( $taxonomy ) ) {
+            return false;
+        }
+        wp_set_object_terms( $post_id, $tags, $taxonomy, true );
+        return true;
     }
 
     /**
@@ -410,40 +546,54 @@ class WACDMG_Admin_API {
         $kw_prompt    = $request->get_param( 'kw_prompt' );
         $post_id      = intval( $request->get_param( 'post_id' ) );
 
+        $rate_error = $this->wacdmg_get_rate_limit_error();
+        if ( $rate_error ) {
+            return $this->wacdmg_error_rest_response( $rate_error );
+        }
+
         $results = array();
+        $any_success = false;
 
         // Generate SEO title
         if ( ! empty( $title_prompt ) ) {
             $r = $this->wacdmg_run_ai_prompt( $title_prompt );
-            $results['seo_title'] = $r['success'] ? strip_tags( $r['description'] ) : '';
+            $results['seo_title'] = ( $r['success'] ) ? wp_strip_all_tags( $r['description'] ) : '';
+            $any_success = $any_success || $r['success'];
+            if ( ! $r['success'] && empty( $results['seo_title'] ) && empty( $desc_prompt ) && empty( $kw_prompt ) ) {
+                return $this->wacdmg_error_rest_response( $r );
+            }
         }
 
         // Generate meta description
         if ( ! empty( $desc_prompt ) ) {
             $r = $this->wacdmg_run_ai_prompt( $desc_prompt );
-            $results['meta_description'] = $r['success'] ? strip_tags( $r['description'] ) : '';
+            $results['meta_description'] = ( $r['success'] ) ? wp_strip_all_tags( $r['description'] ) : '';
+            $any_success = $any_success || $r['success'];
         }
 
         // Generate focus keywords
         if ( ! empty( $kw_prompt ) ) {
             $r = $this->wacdmg_run_ai_prompt( $kw_prompt );
-            $results['focus_keywords'] = $r['success'] ? strip_tags( $r['description'] ) : '';
+            $results['focus_keywords'] = ( $r['success'] ) ? wp_strip_all_tags( $r['description'] ) : '';
+            $any_success = $any_success || $r['success'];
         }
 
         // Write to SEO plugins if post_id provided
-        if ( $post_id && ! empty( $results ) ) {
+        if ( $post_id && $any_success && current_user_can( 'edit_post', $post_id ) ) {
             if ( class_exists( 'WACDMG_SEO' ) ) {
                 $seo = new WACDMG_SEO();
                 $seo->wacdmg_write_seo_meta( $post_id, $results );
             }
         }
 
-        $this->wacdmg_log_usage( 'seo_meta' );
+        if ( $any_success ) {
+            $this->wacdmg_log_usage( 'seo_meta' );
+        }
 
         return new WP_REST_Response( array(
-            'success' => true,
-            'data'    => $results,
-        ), 200 );
+            'success' => $any_success,
+            'data'    => $any_success ? $results : array( 'message' => 'Failed to generate SEO meta.' ),
+        ), $any_success ? 200 : 500 );
     }
 
     /**
@@ -453,16 +603,22 @@ class WACDMG_Admin_API {
      * @return WP_REST_Response
      */
     public function wacdmg_generate_alt_text( WP_REST_Request $request ) {
-        $prompt       = $request->get_param( 'prompt' );
+        $prompt        = $request->get_param( 'prompt' );
         $attachment_id = intval( $request->get_param( 'attachment_id' ) );
 
+        if ( $attachment_id && ! current_user_can( 'edit_post', $attachment_id ) ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => 'You cannot edit this attachment.' ),
+            ), 403 );
+        }
+
         $result = $this->wacdmg_run_ai_prompt( $prompt );
-        $this->wacdmg_log_usage( 'alt_text' );
 
         if ( $result['success'] ) {
-            $alt = strip_tags( $result['description'] );
+            $this->wacdmg_log_usage( 'alt_text' );
+            $alt = wp_strip_all_tags( $result['description'] );
 
-            // Save alt text to attachment if ID provided
             if ( $attachment_id ) {
                 update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
             }
@@ -473,10 +629,7 @@ class WACDMG_Admin_API {
             ), 200 );
         }
 
-        return new WP_REST_Response( array(
-            'success' => false,
-            'data'    => array( 'message' => $result['error'] ),
-        ), 500 );
+        return $this->wacdmg_error_rest_response( $result );
     }
 
     /**
@@ -499,19 +652,16 @@ class WACDMG_Admin_API {
 
         $prompt = $system_ctx ? "Context: {$system_ctx}\n\nUser: {$message}" : $message;
         $result = $this->wacdmg_run_ai_prompt( $prompt, 'chat' );
-        $this->wacdmg_log_usage( 'chat' );
 
         if ( $result['success'] ) {
+            $this->wacdmg_log_usage( 'chat' );
             return new WP_REST_Response( array(
                 'success' => true,
                 'data'    => array( 'reply' => $result['description'] ),
             ), 200 );
         }
 
-        return new WP_REST_Response( array(
-            'success' => false,
-            'data'    => array( 'message' => $result['error'] ),
-        ), 500 );
+        return $this->wacdmg_error_rest_response( $result );
     }
 
     // =========================================================================
@@ -540,6 +690,25 @@ class WACDMG_Admin_API {
             ), 400 );
         }
 
+        $rate_error = $this->wacdmg_get_rate_limit_error();
+        if ( $rate_error ) {
+            return $this->wacdmg_error_rest_response( $rate_error );
+        }
+
+        if ( $post_id && $set_featured && ! current_user_can( 'edit_post', $post_id ) ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => 'You cannot edit this post.' ),
+            ), 403 );
+        }
+
+        if ( $save_to_lib && ! current_user_can( 'upload_files' ) ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => 'You do not have permission to upload files.' ),
+            ), 403 );
+        }
+
         $aiCred        = get_option( 'wacdmg_ai_creds', array() );
         $image_provider = $aiCred['image_provider'] ?? 'dalle';
 
@@ -558,10 +727,7 @@ class WACDMG_Admin_API {
         }
 
         if ( ! $result['success'] ) {
-            return new WP_REST_Response( array(
-                'success' => false,
-                'data'    => array( 'message' => $result['error'] ),
-            ), 500 );
+            return $this->wacdmg_error_rest_response( $result );
         }
 
         $image_url     = $result['url'];
@@ -575,9 +741,13 @@ class WACDMG_Admin_API {
             }
 
             // Set as featured image
-            if ( $attachment_id && $post_id && $set_featured ) {
+            if ( $attachment_id && ! is_wp_error( $attachment_id ) && $post_id && $set_featured && current_user_can( 'edit_post', $post_id ) ) {
                 set_post_thumbnail( $post_id, $attachment_id );
             }
+        }
+
+        if ( is_wp_error( $attachment_id ) ) {
+            $attachment_id = null;
         }
 
         $this->wacdmg_log_usage( 'image' );
@@ -609,13 +779,26 @@ class WACDMG_Admin_API {
         }
 
         $templates  = get_option( 'wacdmg_templates', array() );
-        $id         = sanitize_key( uniqid( 'tpl_', true ) );
+        if ( ! is_array( $templates ) ) {
+            $templates = array();
+        }
+
+        $defaults    = $this->wacdmg_get_default_templates();
+        $incoming_id = isset( $template['id'] ) ? sanitize_text_field( $template['id'] ) : '';
+        if ( $incoming_id !== '' && ( isset( $templates[ $incoming_id ] ) || isset( $defaults[ $incoming_id ] ) ) ) {
+            $id      = $incoming_id;
+            $created = isset( $templates[ $id ]['created'] ) ? $templates[ $id ]['created'] : current_time( 'mysql' );
+        } else {
+            $id      = str_replace( '.', '', uniqid( 'tpl_', true ) );
+            $created = current_time( 'mysql' );
+        }
+
         $templates[ $id ] = array(
-            'id'       => $id,
-            'name'     => sanitize_text_field( $template['name'] ),
-            'prompt'   => sanitize_textarea_field( $template['prompt'] ),
-            'type'     => sanitize_text_field( $template['type'] ?? 'general' ),
-            'created'  => current_time( 'mysql' ),
+            'id'      => $id,
+            'name'    => sanitize_text_field( $template['name'] ),
+            'prompt'  => sanitize_textarea_field( $template['prompt'] ),
+            'type'    => sanitize_text_field( $template['type'] ?? 'general' ),
+            'created' => $created,
         );
         update_option( 'wacdmg_templates', $templates );
 
@@ -629,12 +812,7 @@ class WACDMG_Admin_API {
      * @return WP_REST_Response
      */
     public function wacdmg_get_templates( WP_REST_Request $request ) {
-        $templates = get_option( 'wacdmg_templates', array() );
-
-        // Add built-in defaults if empty
-        if ( empty( $templates ) ) {
-            $templates = $this->wacdmg_get_default_templates();
-        }
+        $templates = $this->wacdmg_get_merged_templates();
 
         return new WP_REST_Response( array( 'success' => true, 'data' => array_values( $templates ) ), 200 );
     }
@@ -646,7 +824,14 @@ class WACDMG_Admin_API {
      * @return WP_REST_Response
      */
     public function wacdmg_delete_template( WP_REST_Request $request ) {
-        $id        = sanitize_key( $request->get_param( 'id' ) );
+        $id = sanitize_text_field( $request->get_param( 'id' ) );
+        if ( strpos( $id, 'default_' ) === 0 ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => 'Built-in templates cannot be deleted.' ),
+            ), 400 );
+        }
+
         $templates = get_option( 'wacdmg_templates', array() );
 
         if ( isset( $templates[ $id ] ) ) {
@@ -669,6 +854,11 @@ class WACDMG_Admin_API {
      */
     public function wacdmg_get_usage( WP_REST_Request $request ) {
         $usage = get_option( 'wacdmg_usage', array() );
+        if ( ! is_array( $usage ) ) {
+            $usage = array();
+        }
+        $usage['today_date'] = current_time( 'Y-m-d' );
+        $usage['month_date'] = current_time( 'Y-m' );
         return new WP_REST_Response( array( 'success' => true, 'data' => $usage ), 200 );
     }
 
@@ -697,6 +887,11 @@ class WACDMG_Admin_API {
     private function wacdmg_run_ai_prompt( $prompt, $type = 'text' ) {
         if ( empty( $prompt ) ) {
             return array( 'success' => false, 'error' => 'Prompt is required.' );
+        }
+
+        $rate_error = $this->wacdmg_get_rate_limit_error();
+        if ( $rate_error ) {
+            return $rate_error;
         }
 
         $aiCred = get_option( 'wacdmg_ai_creds', array() );
@@ -1192,6 +1387,105 @@ class WACDMG_Admin_API {
                 'created' => '2025-01-01 00:00:00',
             ),
         );
+    }
+
+    /**
+     * Merge built-in templates with user-saved templates (user values win).
+     *
+     * @return array
+     */
+    private function wacdmg_get_merged_templates() {
+        $defaults = $this->wacdmg_get_default_templates();
+        $saved    = get_option( 'wacdmg_templates', array() );
+        if ( ! is_array( $saved ) ) {
+            $saved = array();
+        }
+        return array_merge( $defaults, $saved );
+    }
+
+    /**
+     * Auto-generate SEO meta when a post is first published and meta is empty.
+     *
+     * @param string  $new_status New post status.
+     * @param string  $old_status Previous post status.
+     * @param WP_Post $post       Post object.
+     */
+    public function wacdmg_auto_seo_on_publish( $new_status, $old_status, $post ) {
+        static $running = false;
+        if ( $running ) {
+            return;
+        }
+        if ( 'publish' !== $new_status || 'publish' === $old_status ) {
+            return;
+        }
+        if ( ! $post instanceof WP_Post ) {
+            return;
+        }
+        if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+            return;
+        }
+        if ( wp_is_post_autosave( $post->ID ) || wp_is_post_revision( $post->ID ) ) {
+            return;
+        }
+        if ( empty( $post->post_title ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'edit_post', $post->ID ) ) {
+            return;
+        }
+
+        $creds = get_option( 'wacdmg_ai_creds', array() );
+        if ( empty( $creds['auto_seo_on_publish'] ) ) {
+            return;
+        }
+        if ( $this->wacdmg_is_over_daily_limit() ) {
+            return;
+        }
+        if ( ! class_exists( 'WACDMG_SEO' ) ) {
+            return;
+        }
+
+        $seo      = new WACDMG_SEO();
+        $existing = $seo->wacdmg_get_existing_seo_meta( $post->ID );
+        if ( ! empty( $existing['seo_title'] ) || ! empty( $existing['meta_description'] ) ) {
+            return;
+        }
+
+        $running = true;
+
+        $title   = $post->post_title;
+        $excerpt = wp_strip_all_tags( $post->post_excerpt ? $post->post_excerpt : $post->post_content );
+        $excerpt = wp_trim_words( $excerpt, 80, '' );
+
+        $title_prompt = 'Write an SEO meta title for: "' . $title . '". Under 60 characters. Return only the meta title as plain text.';
+        $desc_prompt  = 'Write an SEO meta description for a page titled: "' . $title . '". Content preview: "' . $excerpt . '". 140-160 characters. Return only the meta description as plain text.';
+        $kw_prompt    = 'Suggest 3-5 focus keywords for a page titled: "' . $title . '". Return only a comma-separated list.';
+
+        $results     = array();
+        $any_success = false;
+
+        $r = $this->wacdmg_run_ai_prompt( $title_prompt );
+        if ( $r['success'] ) {
+            $results['seo_title'] = wp_strip_all_tags( $r['description'] );
+            $any_success          = true;
+        }
+        $r = $this->wacdmg_run_ai_prompt( $desc_prompt );
+        if ( $r['success'] ) {
+            $results['meta_description'] = wp_strip_all_tags( $r['description'] );
+            $any_success                 = true;
+        }
+        $r = $this->wacdmg_run_ai_prompt( $kw_prompt );
+        if ( $r['success'] ) {
+            $results['focus_keywords'] = wp_strip_all_tags( $r['description'] );
+            $any_success               = true;
+        }
+
+        if ( $any_success ) {
+            $seo->wacdmg_write_seo_meta( $post->ID, $results );
+            $this->wacdmg_log_usage( 'seo_meta' );
+        }
+
+        $running = false;
     }
 
     /**

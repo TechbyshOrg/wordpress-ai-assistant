@@ -1,5 +1,6 @@
-export async function callWpApi(path = '', method = 'GET', body = null) {
+export async function callWpApi(path = '', method = 'GET', body = null, options = {}) {
   const url = `${wacdmgAdmin.apiBaseUrl}${path}`;
+  const signal = options && options.signal ? options.signal : undefined;
 
   const res = await fetch(url, {
     method,
@@ -8,37 +9,26 @@ export async function callWpApi(path = '', method = 'GET', body = null) {
       'X-WP-Nonce': wacdmgAdmin.rest_nonce,
     },
     body: body ? JSON.stringify(body) : null,
+    signal,
   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'API error');
+  let data = null;
+  try {
+    data = await res.json();
+  } catch (e) {
+    data = null;
   }
 
-  return await res.json();
+  if (!res.ok) {
+    const msg =
+      (data && data.data && data.data.message) ||
+      (data && data.message) ||
+      `API error (${res.status})`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+
+  return data;
 }
-
-
-// import { API_BASE_URL } from './config';
-
-// export async function callWpApi(path = '', method = 'GET', body = null) {
-//   const url = `${API_BASE_URL}${path}`;
-
-//   // Automatically include nonce from the global localized script
-//   const nonce = typeof wacdmgAdmin !== 'undefined' ? wacdmgAdmin.nonce : '';
-
-//   const res = await fetch(url, {
-//     method,
-//     headers: {
-//       'Content-Type': 'application/json',
-//     },
-//     body: JSON.stringify({
-//       nonce,
-//       ...(body || {}),
-      
-//     }),
-//   });
-
-//   if (!res.ok) throw new Error('API error');
-//   return await res.json();
-// }

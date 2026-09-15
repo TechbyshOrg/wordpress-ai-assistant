@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { callWpApi } from '../../utils/callWpApi';
 import { imageStylePresets, imageSizes, imageQualities, imageStyles } from '../../utils/variables';
 import './style.css';
@@ -14,6 +14,24 @@ const ImageGenerator = () => {
     const [images, setImages]               = useState([]);
     const [saveToLibrary, setSaveToLibrary] = useState(true);
     const [message, setMessage]             = useState({ text: '', type: '' });
+    const abortRef = useRef(null);
+
+    const getSignal = () => {
+        if (abortRef.current) {
+            abortRef.current.abort();
+        }
+        abortRef.current = new AbortController();
+        return abortRef.current.signal;
+    };
+
+    const cancelGeneration = () => {
+        if (abortRef.current) {
+            abortRef.current.abort();
+        }
+        setLoading(false);
+        setEnhancing(false);
+        setMessage({ text: 'Generation cancelled.', type: 'success' });
+    };
 
     const buildFinalPrompt = () => {
         return stylePreset ? `${prompt}, ${stylePreset}` : prompt;
@@ -23,16 +41,18 @@ const ImageGenerator = () => {
         if (!prompt.trim()) return;
         setEnhancing(true);
         try {
-            const { callWpApi: api } = await import('../../utils/callWpApi');
-            // Use the generate-description endpoint to enhance the prompt
             const response = await callWpApi('/generate-description', 'POST', {
                 prompt: `Enhance this image generation prompt to make it more detailed, vivid, and specific: "${prompt}". Return only the enhanced prompt as plain text.`,
                 method: 'image_prompt',
-            });
+            }, { signal: getSignal() });
             if (response.success) {
                 setPrompt(response.data.description.trim().replace(/^"|"$/g, ''));
             }
-        } catch {}
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                setMessage({ text: error.message || 'Failed to enhance prompt.', type: 'error' });
+            }
+        }
         setEnhancing(false);
     };
 
@@ -49,7 +69,7 @@ const ImageGenerator = () => {
                 quality,
                 style,
                 save_to_library: saveToLibrary,
-            });
+            }, { signal: getSignal() });
 
             if (response.success) {
                 const newImage = {
@@ -65,7 +85,9 @@ const ImageGenerator = () => {
                 setMessage({ text: 'Error: ' + (response.data?.message || 'Failed to generate image.'), type: 'error' });
             }
         } catch (error) {
-            setMessage({ text: 'Error: ' + (error.message || 'An error occurred. Please check your API settings.'), type: 'error' });
+            if (error.name !== 'AbortError') {
+                setMessage({ text: 'Error: ' + (error.message || 'An error occurred. Please check your API settings.'), type: 'error' });
+            }
         }
 
         setLoading(false);
@@ -134,16 +156,26 @@ const ImageGenerator = () => {
                         <input type="checkbox" checked={saveToLibrary} onChange={e => setSaveToLibrary(e.target.checked)} />
                         Save to WordPress Media Library
                     </label>
-                    <button
-                        type="button"
-                        className="wacdmg-imggen-generate-btn"
-                        onClick={handleGenerate}
-                        disabled={loading || !prompt.trim()}
-                    >
-                        {loading ? (
-                            <><span className="wacdmg-imggen-spinner"></span> Generating...</>
-                        ) : '✨ Generate Image'}
-                    </button>
+                    {loading ? (
+                        <>
+                            <button
+                                type="button"
+                                className="wacdmg-imggen-generate-btn"
+                                onClick={cancelGeneration}
+                            >
+                                Cancel
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            type="button"
+                            className="wacdmg-imggen-generate-btn"
+                            onClick={handleGenerate}
+                            disabled={!prompt.trim()}
+                        >
+                            ✨ Generate Image
+                        </button>
+                    )}
                 </div>
 
                 {message.text && (

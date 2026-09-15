@@ -40,7 +40,7 @@ const UsageLog = () => {
     };
 
     const totalToday = () => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = usage?.today_date || window.wacdmgAdmin?.wpDate || new Date().toISOString().split('T')[0];
         if (!usage?.daily?.[today]) return 0;
         return Object.values(usage.daily[today]).reduce((a, b) => a + b, 0);
     };
@@ -75,7 +75,7 @@ const UsageLog = () => {
                         {usage.monthly && (
                             <div className="wacdmg-usage-card">
                                 <span className="wacdmg-usage-card-num">
-                                    {usage.monthly[new Date().toISOString().substring(0, 7)] || 0}
+                                    {usage.monthly[usage.month_date || window.wacdmgAdmin?.wpMonth || new Date().toISOString().substring(0, 7)] || 0}
                                 </span>
                                 <span className="wacdmg-usage-card-lbl">This Month</span>
                             </div>

@@ -28,6 +28,7 @@ class WACDMG_Admin {
         add_action( 'admin_menu', array( $this, 'wacdmg_register_admin_menus' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'wacdmg_enqueue_admin_scripts' ) );
         add_action( 'enqueue_block_editor_assets', array( $this, 'wacdmg_enqueue_admin_block_scripts' ) );
+        add_filter( 'attachment_fields_to_edit', array( $this, 'wacdmg_attachment_alt_field' ), 10, 2 );
     }
 
     /**
@@ -100,15 +101,12 @@ class WACDMG_Admin {
             'ai-assistant_page_wacdmg-usage-log',
         );
 
-        // Also enqueue on WooCommerce product edit screen.
-        $is_product_page = ( $hook === 'post.php' || $hook === 'post-new.php' )
-            && isset( $_GET['post_type'] ) ? ( sanitize_key( $_GET['post_type'] ) === 'product' ) : false;
-
-        if ( $hook === 'post.php' || $hook === 'post-new.php' ) {
-            $is_product_page = true;
-        }
+        // Also enqueue on WooCommerce classic product edit screen only.
+        $is_product_page = $this->wacdmg_is_classic_product_screen( $hook );
 
         $should_enqueue = in_array( $hook, $wacdmg_pages, true ) || $is_product_page;
+
+        $this->wacdmg_enqueue_media_alt_script( $hook );
 
         if ( ! $should_enqueue ) {
             return;
@@ -171,7 +169,96 @@ class WACDMG_Admin {
             'currentPage' => $current_page,
             'seoPlugins'  => $seo_plugins,
             'pluginUrl'   => WACDMG_PLUGIN_URL,
+            'wpDate'      => current_time( 'Y-m-d' ),
+            'wpMonth'     => current_time( 'Y-m' ),
         ) );
+    }
+
+    /**
+     * Whether the current admin screen is a classic WooCommerce product editor.
+     *
+     * @param string $hook Current admin hook.
+     * @return bool
+     */
+    private function wacdmg_is_classic_product_screen( $hook ) {
+        if ( $hook !== 'post.php' && $hook !== 'post-new.php' ) {
+            return false;
+        }
+
+        $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+        if ( $screen && isset( $screen->post_type ) && $screen->post_type === 'product' ) {
+            return true;
+        }
+
+        if ( isset( $_GET['post_type'] ) && sanitize_key( wp_unslash( $_GET['post_type'] ) ) === 'product' ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            return true;
+        }
+
+        if ( $hook === 'post.php' && isset( $_GET['post'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $post_id = intval( $_GET['post'] );
+            return $post_id && get_post_type( $post_id ) === 'product';
+        }
+
+        return false;
+    }
+
+    /**
+     * Enqueue Media Library alt-text helper on upload and editor screens.
+     *
+     * @param string $hook Current admin hook.
+     */
+    private function wacdmg_enqueue_media_alt_script( $hook ) {
+        $media_hooks = array( 'upload.php', 'post.php', 'post-new.php', 'media.php' );
+        if ( ! in_array( $hook, $media_hooks, true ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'upload_files' ) ) {
+            return;
+        }
+
+        $api_namespace = defined( 'WACDMG_API_NAMESPACE' ) ? WACDMG_API_NAMESPACE : 'wacdmg/v1';
+        $api_base_url  = rest_url( $api_namespace );
+        if ( strpos( $api_base_url, '?rest_route=' ) !== false ) {
+            $api_base_url = home_url( "/wp-json/{$api_namespace}" );
+        }
+
+        wp_enqueue_script(
+            'wacdmg-media-alt',
+            WACDMG_PLUGIN_URL . 'assets/js/media-alt.js',
+            array( 'jquery' ),
+            WACDMG_PLUGIN_VERSION,
+            true
+        );
+
+        wp_localize_script( 'wacdmg-media-alt', 'wacdmgMediaAlt', array(
+            'apiBaseUrl' => esc_url_raw( $api_base_url ),
+            'restNonce'  => wp_create_nonce( 'wp_rest' ),
+        ) );
+    }
+
+    /**
+     * Add an AI alt-text button to the attachment edit form.
+     *
+     * @param array   $fields Existing attachment fields.
+     * @param WP_Post $post   Attachment post.
+     * @return array
+     */
+    public function wacdmg_attachment_alt_field( $fields, $post ) {
+        if ( ! $post || ! wp_attachment_is_image( $post->ID ) || ! current_user_can( 'edit_post', $post->ID ) ) {
+            return $fields;
+        }
+
+        $fields['wacdmg_ai_alt'] = array(
+            'label' => __( 'AI Alt Text', 'wacdmg-ai-content-assistant' ),
+            'input' => 'html',
+            'html'  => sprintf(
+                '<button type="button" class="button wacdmg-gen-alt-btn" data-attachment-id="%1$d">%2$s</button> <span class="wacdmg-alt-status" aria-live="polite"></span>',
+                intval( $post->ID ),
+                esc_html__( 'Generate with AI', 'wacdmg-ai-content-assistant' )
+            ),
+        );
+
+        return $fields;
     }
 
     /**
@@ -191,7 +278,6 @@ class WACDMG_Admin {
                 'wp-data',
                 'wp-block-editor',
                 'wp-plugins',
-                'wp-edit-post',
             ),
             WACDMG_PLUGIN_VERSION,
             true
@@ -222,6 +308,8 @@ class WACDMG_Admin {
             'apiBaseUrl' => esc_url_raw( $api_base_url ),
             'seoPlugins' => $seo_plugins,
             'pluginUrl'  => WACDMG_PLUGIN_URL,
+            'wpDate'     => current_time( 'Y-m-d' ),
+            'wpMonth'    => current_time( 'Y-m' ),
         ) );
     }
 

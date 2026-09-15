@@ -5,12 +5,14 @@
  * and optionally setting them as the post's Featured Image.
  */
 import { registerPlugin } from '@wordpress/plugins';
-import { PluginDocumentSettingPanel } from '@wordpress/edit-post';
-import { useState } from '@wordpress/element';
+import { useState, useRef } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
 import { Button, TextareaControl, ToggleControl, Notice, Spinner, SelectControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
+import { getPluginDocumentSettingPanel } from '../utils/documentPanel';
+
+const PluginDocumentSettingPanel = getPluginDocumentSettingPanel();
 
 const IMAGE_STYLE_PRESETS = [
     { label: 'No specific style', value: '' },
@@ -31,6 +33,7 @@ const AIImagePanel = () => {
     const [generatedUrl, setGeneratedUrl] = useState('');
     const [attachmentId, setAttachmentId] = useState(null);
     const [notice, setNotice]           = useState({ text: '', status: '' });
+    const abortRef = useRef(null);
 
     const postId    = useSelect(select => select('core/editor').getCurrentPostId());
     const postTitle = useSelect(select => select('core/editor').getEditedPostAttribute('title') || '');
@@ -45,6 +48,10 @@ const AIImagePanel = () => {
         setLoading(true);
         setNotice({ text: '', status: '' });
         setGeneratedUrl('');
+        if (abortRef.current) {
+            abortRef.current.abort();
+        }
+        abortRef.current = new AbortController();
 
         try {
             const response = await callWpApi('/generate-image', 'POST', {
@@ -52,7 +59,7 @@ const AIImagePanel = () => {
                 save_to_library: saveToLib,
                 set_as_featured: setFeatured,
                 post_id: postId,
-            });
+            }, { signal: abortRef.current.signal });
 
             if (response.success) {
                 setGeneratedUrl(response.data.url);
@@ -67,7 +74,9 @@ const AIImagePanel = () => {
                 setNotice({ text: response.data?.message || __('Failed to generate image.', 'wacdmg-ai-content-assistant'), status: 'error' });
             }
         } catch (error) {
-            setNotice({ text: error.message || __('Network error. Check your image generation settings.', 'wacdmg-ai-content-assistant'), status: 'error' });
+            if (error.name !== 'AbortError') {
+                setNotice({ text: error.message || __('Network error. Check your image generation settings.', 'wacdmg-ai-content-assistant'), status: 'error' });
+            }
         }
 
         setLoading(false);
@@ -129,6 +138,15 @@ const AIImagePanel = () => {
             >
                 {loading ? <><Spinner /> {__('Generating...', 'wacdmg-ai-content-assistant')}</> : __('Generate Image', 'wacdmg-ai-content-assistant')}
             </Button>
+            {loading && (
+                <Button
+                    variant="secondary"
+                    onClick={() => { abortRef.current?.abort(); setLoading(false); }}
+                    style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}
+                >
+                    {__('Cancel', 'wacdmg-ai-content-assistant')}
+                </Button>
+            )}
 
             {notice.text && (
                 <Notice status={notice.status === 'success' ? 'success' : 'error'} isDismissible={false} style={{ marginTop: '10px' }}>
@@ -159,4 +177,6 @@ const AIImagePanel = () => {
     );
 };
 
-registerPlugin('wacdmg-ai-image-panel', { render: AIImagePanel });
+if (PluginDocumentSettingPanel) {
+    registerPlugin('wacdmg-ai-image-panel', { render: AIImagePanel });
+}

@@ -30,10 +30,15 @@ const ContentTemplates = () => {
             return;
         }
         try {
-            const res = await callWpApi('/save-template', 'POST', { template: form });
+            const payload = { ...form };
+            if (editId) {
+                payload.id = editId;
+            }
+            const res = await callWpApi('/save-template', 'POST', { template: payload });
             if (res.success) {
                 setMessage({ text: 'Template saved!', type: 'success' });
                 setShowForm(false);
+                setEditId(null);
                 setForm({ name: '', prompt: '', type: 'general' });
                 fetchTemplates();
             }
@@ -51,6 +56,12 @@ const ContentTemplates = () => {
         } catch {}
     };
 
+    const startEdit = (tpl) => {
+        setEditId(tpl.id);
+        setForm({ name: tpl.name, prompt: tpl.prompt, type: tpl.type || 'general' });
+        setShowForm(true);
+    };
+
     const copyPrompt = (prompt) => {
         navigator.clipboard?.writeText(prompt);
         setMessage({ text: '📋 Prompt copied to clipboard!', type: 'success' });
@@ -66,7 +77,7 @@ const ContentTemplates = () => {
                     <h2>📝 Content Templates</h2>
                     <p>Save and reuse custom prompt templates for different content types.</p>
                 </div>
-                <button className="wacdmg-tpl-add-btn" onClick={() => { setShowForm(true); setForm({ name: '', prompt: '', type: 'general' }); }}>
+                <button className="wacdmg-tpl-add-btn" onClick={() => { setShowForm(true); setEditId(null); setForm({ name: '', prompt: '', type: 'general' }); }}>
                     + New Template
                 </button>
             </div>
@@ -78,7 +89,7 @@ const ContentTemplates = () => {
             {/* New template form */}
             {showForm && (
                 <div className="wacdmg-tpl-form-card">
-                    <h3>New Template</h3>
+                    <h3>{editId ? 'Edit Template' : 'New Template'}</h3>
                     <div className="wacdmg-tpl-field">
                         <label>Template Name</label>
                         <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g., E-commerce Product" className="wacdmg-tpl-input" />
@@ -95,7 +106,7 @@ const ContentTemplates = () => {
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
                         <button className="wacdmg-tpl-save-btn" onClick={handleSave}>💾 Save Template</button>
-                        <button className="wacdmg-tpl-cancel-btn" onClick={() => setShowForm(false)}>Cancel</button>
+                        <button className="wacdmg-tpl-cancel-btn" onClick={() => { setShowForm(false); setEditId(null); }}>Cancel</button>
                     </div>
                 </div>
             )}
@@ -128,7 +139,8 @@ const ContentTemplates = () => {
                             <p className="wacdmg-tpl-prompt-preview">{tpl.prompt}</p>
                             <div className="wacdmg-tpl-card-actions">
                                 <button onClick={() => copyPrompt(tpl.prompt)} className="wacdmg-tpl-action-btn wacdmg-tpl-copy-btn">📋 Copy Prompt</button>
-                                {!tpl.id.startsWith('default_') && (
+                                <button onClick={() => startEdit(tpl)} className="wacdmg-tpl-action-btn wacdmg-tpl-copy-btn">Edit</button>
+                                {!String(tpl.id).startsWith('default_') && (
                                     <button onClick={() => handleDelete(tpl.id)} className="wacdmg-tpl-action-btn wacdmg-tpl-delete-btn">🗑️ Delete</button>
                                 )}
                             </div>

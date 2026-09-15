@@ -1,14 +1,26 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { callWpApi } from '../../utils/callWpApi';
 import './style.css';
 import ProductPromptGenerator from '../../utils/PromptGenerator';
 import { toneOptions, languageOptions } from '../../utils/variables';
+
+const fillTemplatePlaceholders = (prompt, { title = '', content = '', keywords = '' } = {}) => {
+    return String(prompt || '')
+        .replace(/\[PRODUCT_NAME\]/gi, title)
+        .replace(/\[TITLE\]/gi, title)
+        .replace(/\[CONTENT\]/gi, content)
+        .replace(/\[KEYWORDS\]/gi, keywords);
+};
 
 const DescriptionGenerator = () => {
     const [tone, setTone]       = useState('persuasive');
     const [language, setLanguage] = useState('English');
     const [loading, setLoading] = useState(false);
     const [loadingAction, setLoadingAction] = useState('');
+    const abortRef = useRef(null);
+    const [templates, setTemplates] = useState([]);
+    const [selectedTemplate, setSelectedTemplate] = useState('');
+    const [generatedTags, setGeneratedTags] = useState([]);
 
     const [generatedDescription, setGeneratedDescription] = useState('');
     const [generationMethod, setGenerationMethod] = useState(null);
@@ -30,6 +42,33 @@ const DescriptionGenerator = () => {
     const [setAsFeatured, setSetAsFeatured] = useState(false);
 
     const promptGenerator = new ProductPromptGenerator({ tone, language });
+
+    useEffect(() => {
+        callWpApi('/get-templates', 'GET')
+            .then(res => {
+                if (res.success && Array.isArray(res.data)) {
+                    setTemplates(res.data);
+                }
+            })
+            .catch(() => {});
+    }, []);
+
+    const getSignal = () => {
+        if (abortRef.current) {
+            abortRef.current.abort();
+        }
+        abortRef.current = new AbortController();
+        return abortRef.current.signal;
+    };
+
+    const cancelGeneration = () => {
+        if (abortRef.current) {
+            abortRef.current.abort();
+        }
+        setLoading(false);
+        setLoadingAction('');
+        setImageLoading(false);
+    };
 
     // Helper: get current post ID
     const getPostId = () => {
@@ -61,6 +100,7 @@ const DescriptionGenerator = () => {
         setInsertButtonText('Insert Into Description');
         setAddPrompt(false);
         setYourPrompt('');
+        setGeneratedTags([]);
     };
 
     // Core submit function
@@ -75,7 +115,7 @@ const DescriptionGenerator = () => {
                 method,
                 tone,
                 language,
-            });
+            }, { signal: getSignal() });
 
             if (response.success) {
                 setGeneratedDescription(response.data.description);
@@ -84,6 +124,9 @@ const DescriptionGenerator = () => {
                 alert('Failed: ' + (response.data?.message || 'Unknown error'));
             }
         } catch (error) {
+            if (error.name === 'AbortError') {
+                return;
+            }
             alert('Error: ' + (error.message || 'An error occurred while generating content.'));
         }
 
@@ -132,7 +175,7 @@ const DescriptionGenerator = () => {
                 prompt: generator.productShortDescription(productName),
                 tone,
                 language,
-            });
+            }, { signal: getSignal() });
             if (response.success) {
                 // Insert directly into the short description textarea
                 const shortDescEl = document.getElementById('excerpt');
@@ -147,7 +190,11 @@ const DescriptionGenerator = () => {
             } else {
                 alert('Failed: ' + (response.data?.message || 'Unknown error'));
             }
-        } catch (error) { alert('Error: ' + (error.message || 'Error generating short description.')); }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                alert('Error: ' + (error.message || 'Error generating short description.'));
+            }
+        }
         setLoading(false);
         setLoadingAction('');
     };
@@ -164,15 +211,22 @@ const DescriptionGenerator = () => {
                 prompt: generator.productTags(productName, currentDesc),
                 tone,
                 language,
-            });
+                post_id: getPostId(),
+            }, { signal: getSignal() });
             if (response.success) {
-                setGeneratedDescription('Tags: ' + response.data.tags.join(', '));
+                const tags = response.data.tags || [];
+                setGeneratedTags(tags);
+                setGeneratedDescription('Tags: ' + tags.join(', '));
                 setGenerationMethod('tags');
-                setInsertButtonText('Tags Generated');
+                setInsertButtonText('Insert Tags');
             } else {
                 alert('Failed: ' + (response.data?.message || 'Unknown error'));
             }
-        } catch (error) { alert('Error: ' + (error.message || 'Error generating tags.')); }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                alert('Error: ' + (error.message || 'Error generating tags.'));
+            }
+        }
         setLoading(false);
         setLoadingAction('');
     };
@@ -191,14 +245,18 @@ const DescriptionGenerator = () => {
                 desc_prompt: generator.seoMetaDescription(productName, currentDesc),
                 kw_prompt: generator.seoFocusKeywords(productName, currentDesc),
                 post_id: postId,
-            });
+            }, { signal: getSignal() });
             if (response.success) {
                 setSeoMeta(response.data);
                 setShowSeo(true);
             } else {
                 alert('Failed: ' + (response.data?.message || 'Unknown error'));
             }
-        } catch (error) { alert('Error: ' + (error.message || 'Error generating SEO meta.')); }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                alert('Error: ' + (error.message || 'Error generating SEO meta.'));
+            }
+        }
         setLoading(false);
         setLoadingAction('');
     };
@@ -230,13 +288,17 @@ const DescriptionGenerator = () => {
                 save_to_library: saveToLibrary,
                 set_as_featured: setAsFeatured,
                 post_id: postId,
-            });
+            }, { signal: getSignal() });
             if (response.success) {
                 setGeneratedImage(response.data);
             } else {
                 alert('Failed: ' + (response.data?.message || 'Unknown error'));
             }
-        } catch (error) { alert('Error: ' + (error.message || 'Error generating image.')); }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                alert('Error: ' + (error.message || 'Error generating image.'));
+            }
+        }
         setImageLoading(false);
     };
 
@@ -249,9 +311,59 @@ const DescriptionGenerator = () => {
             insertToTitle(generatedDescription);
         } else if (generationMethod === 'short_description') {
             insertToShortDescription(generatedDescription);
+        } else if (generationMethod === 'tags') {
+            insertTags();
         } else {
             insertToProductDescription(generatedDescription);
         }
+    };
+
+    const insertTagsIntoWooUi = (tags) => {
+        const input = document.getElementById('new-tag-product_tag');
+        if (!input) return;
+        input.value = tags.join(', ');
+        const addBtn = input.parentElement && input.parentElement.querySelector('.tagadd');
+        if (addBtn) {
+            addBtn.click();
+        }
+    };
+
+    const insertTags = async () => {
+        const tags = generatedTags.length
+            ? generatedTags
+            : generatedDescription.replace(/^Tags:\s*/i, '').split(',').map(t => t.trim()).filter(Boolean);
+        if (!tags.length) return;
+
+        insertTagsIntoWooUi(tags);
+
+        const postId = getPostId();
+        if (postId) {
+            try {
+                await callWpApi('/generate-tags', 'POST', {
+                    tags,
+                    apply: true,
+                    post_id: postId,
+                });
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    alert('Error: ' + (error.message || 'Could not save tags.'));
+                    return;
+                }
+            }
+        }
+
+        setInsertButtonText('Tags Inserted');
+        setTimeout(() => setInsertButtonText('Insert Tags'), 2000);
+    };
+
+    const handleUseTemplate = () => {
+        const tpl = templates.find(t => t.id === selectedTemplate);
+        if (!tpl) return;
+        const filled = fillTemplatePlaceholders(tpl.prompt, {
+            title: getProductName(),
+            content: getCurrentDescription(),
+        });
+        submitPrompt('template', filled, 'Generating from template...');
     };
 
     const insertToProductDescription = (content) => {
@@ -327,6 +439,29 @@ const DescriptionGenerator = () => {
                             <option key={l.value} value={l.value}>{l.label}</option>
                         ))}
                     </select>
+                    {templates.length > 0 && (
+                        <>
+                            <select
+                                value={selectedTemplate}
+                                onChange={e => setSelectedTemplate(e.target.value)}
+                                className="wacdmg-control-select"
+                                title="Use template"
+                            >
+                                <option value="">Use template...</option>
+                                {templates.map(tpl => (
+                                    <option key={tpl.id} value={tpl.id}>{tpl.name}</option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm"
+                                disabled={!selectedTemplate || loading}
+                                onClick={handleUseTemplate}
+                            >
+                                Run
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -335,6 +470,9 @@ const DescriptionGenerator = () => {
                 <div className="wacdmg-loading-bar">
                     <div className="wacdmg-loading-progress"></div>
                     <span className="wacdmg-loading-text">{loadingAction}</span>
+                    <button type="button" className="wacdmg-btn wacdmg-btn-ghost wacdmg-btn-sm" onClick={cancelGeneration}>
+                        Cancel
+                    </button>
                 </div>
             )}
 
