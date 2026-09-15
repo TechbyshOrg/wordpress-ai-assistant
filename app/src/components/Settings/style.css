@@ -3,9 +3,8 @@
    Modern card-based design with tabs
    ========================================================================= */
 
-/* Settings wrapper */
+/* Settings wrapper — page width is shared in css/admin-style.css */
 .wacdmg-settings-wrap {
-    max-width: 900px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -14,10 +13,11 @@
    ========================================================================= */
 .wacdmg-tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 0;
     border-bottom: 2px solid #e2e8f0;
     margin-bottom: 28px;
-    overflow-x: auto;
+    overflow: visible;
 }
 
 .wacdmg-tab-btn {
@@ -586,9 +586,6 @@
 @media (max-width: 640px) {
     .wacdmg-provider-grid {
         grid-template-columns: 1fr 1fr;
-    }
-    .wacdmg-tabs {
-        flex-wrap: wrap;
     }
     .wacdmg-tab-btn {
         font-size: 12px;

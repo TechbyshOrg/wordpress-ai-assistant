@@ -166,7 +166,7 @@ const BulkFill = () => {
                                     <a href={product.edit_url}>{product.title || '(no title)'}</a>
                                 </td>
                                 <td>{gaps.length ? gaps.join(', ') : 'None'}</td>
-                                <td style={{ fontSize: '12px', maxWidth: '360px' }}>
+                                <td className="wacdmg-bulk-preview">
                                     {preview.content && <div><strong>Description:</strong> {String(preview.content).replace(/<[^>]+>/g, '').slice(0, 120)}...</div>}
                                     {preview.excerpt && <div><strong>Short:</strong> {preview.excerpt}</div>}
                                     {preview.tags && <div><strong>Tags:</strong> {preview.tags.join(', ')}</div>}

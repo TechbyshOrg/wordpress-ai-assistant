@@ -4,6 +4,21 @@
  * This stylesheet is enqueued as a placeholder and can be used for general WordPress admin layout fixes.
  */
 
+/* Shared admin-page width: fill the WP wrap up to a readable cap. */
+.wacdmg-settings-wrap,
+.wacdmg-imggen-wrap,
+.wacdmg-tpl-wrap,
+.wacdmg-usage-wrap {
+    max-width: 1400px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.wacdmg-bulk-preview {
+    font-size: 12px;
+    word-break: break-word;
+}
+
 .wacdmg-field-ai-row {
     margin: 8px 0;
 }
