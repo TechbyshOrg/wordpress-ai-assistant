@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { callWpApi } from '../../utils/callWpApi';
+import { createGenerationSession, isAbortError } from '../../utils/generationRequest';
 import { imageStylePresets, imageSizes, imageQualities, imageStyles } from '../../utils/variables';
 import './style.css';
 
@@ -14,20 +15,10 @@ const ImageGenerator = () => {
     const [images, setImages]               = useState([]);
     const [saveToLibrary, setSaveToLibrary] = useState(true);
     const [message, setMessage]             = useState({ text: '', type: '' });
-    const abortRef = useRef(null);
-
-    const getSignal = () => {
-        if (abortRef.current) {
-            abortRef.current.abort();
-        }
-        abortRef.current = new AbortController();
-        return abortRef.current.signal;
-    };
+    const genSession = useRef(createGenerationSession()).current;
 
     const cancelGeneration = () => {
-        if (abortRef.current) {
-            abortRef.current.abort();
-        }
+        genSession.cancel();
         setLoading(false);
         setEnhancing(false);
         setMessage({ text: 'Generation cancelled.', type: 'success' });
@@ -40,20 +31,24 @@ const ImageGenerator = () => {
     const handleEnhancePrompt = async () => {
         if (!prompt.trim()) return;
         setEnhancing(true);
+        const signal = genSession.start();
         try {
             const response = await callWpApi('/generate-description', 'POST', {
                 prompt: `Enhance this image generation prompt to make it more detailed, vivid, and specific: "${prompt}". Return only the enhanced prompt as plain text.`,
                 method: 'image_prompt',
-            }, { signal: getSignal() });
+            }, { signal });
             if (response.success) {
                 setPrompt(response.data.description.trim().replace(/^"|"$/g, ''));
             }
         } catch (error) {
-            if (error.name !== 'AbortError') {
+            if (!isAbortError(error)) {
                 setMessage({ text: error.message || 'Failed to enhance prompt.', type: 'error' });
             }
+        } finally {
+            if (genSession.settle(signal)) {
+                setEnhancing(false);
+            }
         }
-        setEnhancing(false);
     };
 
     const handleGenerate = async () => {
@@ -61,6 +56,7 @@ const ImageGenerator = () => {
         setLoading(true);
         setMessage({ text: '', type: '' });
         const finalPrompt = buildFinalPrompt();
+        const signal = genSession.start();
 
         try {
             const response = await callWpApi('/generate-image', 'POST', {
@@ -69,7 +65,7 @@ const ImageGenerator = () => {
                 quality,
                 style,
                 save_to_library: saveToLibrary,
-            }, { signal: getSignal() });
+            }, { signal });
 
             if (response.success) {
                 const newImage = {
@@ -85,12 +81,14 @@ const ImageGenerator = () => {
                 setMessage({ text: 'Error: ' + (response.data?.message || 'Failed to generate image.'), type: 'error' });
             }
         } catch (error) {
-            if (error.name !== 'AbortError') {
+            if (!isAbortError(error)) {
                 setMessage({ text: 'Error: ' + (error.message || 'An error occurred. Please check your API settings.'), type: 'error' });
             }
+        } finally {
+            if (genSession.settle(signal)) {
+                setLoading(false);
+            }
         }
-
-        setLoading(false);
     };
 
     return (

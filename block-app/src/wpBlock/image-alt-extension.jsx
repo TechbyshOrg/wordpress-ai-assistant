@@ -7,13 +7,14 @@ import { InspectorControls } from '@wordpress/block-editor';
 import { PanelBody, Button, Notice } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
+import { createGenerationSession, isAbortError } from '../utils/generationRequest';
 
 function addImageAltControls(BlockEdit) {
     return function ImageAltControls(props) {
         const { attributes, setAttributes, name } = props;
         const [generating, setGenerating] = useState(false);
         const [notice, setNotice] = useState({ text: '', status: '' });
-        const abortRef = useRef(null);
+        const genSession = useRef(createGenerationSession()).current;
 
         if (name !== 'core/image') {
             return <BlockEdit {...props} />;
@@ -22,10 +23,7 @@ function addImageAltControls(BlockEdit) {
         const { id, alt, url } = attributes;
 
         const handleGenerate = async () => {
-            if (abortRef.current) {
-                abortRef.current.abort();
-            }
-            abortRef.current = new AbortController();
+            const signal = genSession.start();
             setGenerating(true);
             setNotice({ text: '', status: '' });
 
@@ -38,7 +36,7 @@ function addImageAltControls(BlockEdit) {
                 const response = await callWpApi('/generate-alt-text', 'POST', {
                     prompt,
                     attachment_id: id || 0,
-                }, { signal: abortRef.current.signal });
+                }, { signal });
 
                 if (response.success && response.data?.alt_text) {
                     setAttributes({ alt: response.data.alt_text });
@@ -50,12 +48,14 @@ function addImageAltControls(BlockEdit) {
                     });
                 }
             } catch (error) {
-                if (error.name !== 'AbortError') {
+                if (!isAbortError(error)) {
                     setNotice({ text: error.message || __('Network error.', 'wacdmg-ai-content-assistant'), status: 'error' });
                 }
+            } finally {
+                if (genSession.settle(signal)) {
+                    setGenerating(false);
+                }
             }
-
-            setGenerating(false);
         };
 
         return (
@@ -77,7 +77,7 @@ function addImageAltControls(BlockEdit) {
                                 variant="tertiary"
                                 isSmall
                                 onClick={() => {
-                                    abortRef.current?.abort();
+                                    genSession.cancel();
                                     setGenerating(false);
                                 }}
                                 style={{ marginTop: '8px' }}

@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { callWpApi } from '../../utils/callWpApi';
+import { createGenerationSession, isAbortError } from '../../utils/generationRequest';
+import { readWpEditorContent, writeWpEditorContent, writePostTitle, writeProductTags, writeProductCategories, writeProductAttributes } from '../../utils/wpEditor';
 import './style.css';
 import ProductPromptGenerator from '../../utils/PromptGenerator';
 import { toneOptions, languageOptions } from '../../utils/variables';
@@ -17,10 +19,13 @@ const DescriptionGenerator = () => {
     const [language, setLanguage] = useState('English');
     const [loading, setLoading] = useState(false);
     const [loadingAction, setLoadingAction] = useState('');
-    const abortRef = useRef(null);
+    const genSession = useRef(createGenerationSession()).current;
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState('');
     const [generatedTags, setGeneratedTags] = useState([]);
+    const [generatedCategories, setGeneratedCategories] = useState([]);
+    const [generatedAttributes, setGeneratedAttributes] = useState([]);
+    const [contentGaps, setContentGaps] = useState([]);
 
     const [generatedDescription, setGeneratedDescription] = useState('');
     const [generationMethod, setGenerationMethod] = useState(null);
@@ -51,20 +56,20 @@ const DescriptionGenerator = () => {
                 }
             })
             .catch(() => {});
+        const postId = getPostId();
+        if (postId) {
+            callWpApi('/product-content-status?post_id=' + postId, 'GET')
+                .then(res => {
+                    if (res.success && Array.isArray(res.data.gaps)) {
+                        setContentGaps(res.data.gaps);
+                    }
+                })
+                .catch(() => {});
+        }
     }, []);
 
-    const getSignal = () => {
-        if (abortRef.current) {
-            abortRef.current.abort();
-        }
-        abortRef.current = new AbortController();
-        return abortRef.current.signal;
-    };
-
     const cancelGeneration = () => {
-        if (abortRef.current) {
-            abortRef.current.abort();
-        }
+        genSession.cancel();
         setLoading(false);
         setLoadingAction('');
         setImageLoading(false);
@@ -78,20 +83,13 @@ const DescriptionGenerator = () => {
 
     // Helper: get product title
     const getProductName = () => {
-        const input = document.querySelector('input[name="post_title"]');
+        const input = document.getElementById('title') || document.querySelector('input[name="post_title"]');
         return input ? input.value.trim() : '';
     };
 
     // Helper: get current description text
     const getCurrentDescription = () => {
-        if (typeof tinymce !== 'undefined') {
-            const editor = tinymce.get('content');
-            if (editor && !editor.isHidden()) {
-                return editor.getContent({ format: 'text' });
-            }
-        }
-        const textarea = document.getElementById('content');
-        return textarea ? textarea.value : '';
+        return readWpEditorContent('content', 'text');
     };
 
     const clearGeneratedDescription = () => {
@@ -101,6 +99,16 @@ const DescriptionGenerator = () => {
         setAddPrompt(false);
         setYourPrompt('');
         setGeneratedTags([]);
+        setGeneratedCategories([]);
+        setGeneratedAttributes([]);
+    };
+
+    const finishIfCurrent = (signal) => {
+        if (genSession.settle(signal)) {
+            setLoading(false);
+            setLoadingAction('');
+            setImageLoading(false);
+        }
     };
 
     // Core submit function
@@ -108,6 +116,7 @@ const DescriptionGenerator = () => {
         setLoading(true);
         setLoadingAction(actionLabel);
         setGeneratedDescription('');
+        const signal = genSession.start();
 
         try {
             const response = await callWpApi('/generate-description', 'POST', {
@@ -115,7 +124,7 @@ const DescriptionGenerator = () => {
                 method,
                 tone,
                 language,
-            }, { signal: getSignal() });
+            }, { signal });
 
             if (response.success) {
                 setGeneratedDescription(response.data.description);
@@ -124,17 +133,18 @@ const DescriptionGenerator = () => {
                 alert('Failed: ' + (response.data?.message || 'Unknown error'));
             }
         } catch (error) {
-            if (error.name === 'AbortError') {
-                return;
+            if (!isAbortError(error)) {
+                alert('Error: ' + (error.message || 'An error occurred while generating content.'));
             }
-            alert('Error: ' + (error.message || 'An error occurred while generating content.'));
+        } finally {
+            if (genSession.settle(signal)) {
+                setLoading(false);
+                setLoadingAction('');
+                setAddPrompt(false);
+                setYourPrompt('');
+            }
         }
-
-        setLoading(false);
-        setLoadingAction('');
-        setAddPrompt(false);
-        setYourPrompt('');
-    }, [tone, language]);
+    }, [tone, language, genSession]);
 
     // =========================================================================
     // Action Handlers
@@ -144,6 +154,7 @@ const DescriptionGenerator = () => {
         const productName = getProductName();
         if (!productName) { alert('Please enter a product name first.'); return; }
         const generator = new ProductPromptGenerator({ tone, language });
+        setInsertButtonText('Insert Into Description');
         submitPrompt('name', generator.productNameDescription(productName), 'Generating description...');
     };
 
@@ -153,6 +164,7 @@ const DescriptionGenerator = () => {
         if (!productName) { alert('Please enter a product name first.'); return; }
         if (!currentDesc.trim()) { alert('Please enter a description to improve.'); return; }
         const generator = new ProductPromptGenerator({ tone, language });
+        setInsertButtonText('Insert Into Description');
         submitPrompt('improve', generator.improveDescription(currentDesc, productName), 'Improving description...');
     };
 
@@ -170,20 +182,14 @@ const DescriptionGenerator = () => {
         setLoading(true);
         setLoadingAction('Generating short description...');
         const generator = new ProductPromptGenerator({ tone, language });
+        const signal = genSession.start();
         try {
             const response = await callWpApi('/generate-short-description', 'POST', {
                 prompt: generator.productShortDescription(productName),
                 tone,
                 language,
-            }, { signal: getSignal() });
+            }, { signal });
             if (response.success) {
-                // Insert directly into the short description textarea
-                const shortDescEl = document.getElementById('excerpt');
-                if (shortDescEl) {
-                    shortDescEl.value = response.data.short_description;
-                    shortDescEl.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-                // Also show in output area
                 setGeneratedDescription(response.data.short_description);
                 setGenerationMethod('short_description');
                 setInsertButtonText('Insert Short Description');
@@ -191,12 +197,12 @@ const DescriptionGenerator = () => {
                 alert('Failed: ' + (response.data?.message || 'Unknown error'));
             }
         } catch (error) {
-            if (error.name !== 'AbortError') {
+            if (!isAbortError(error)) {
                 alert('Error: ' + (error.message || 'Error generating short description.'));
             }
+        } finally {
+            finishIfCurrent(signal);
         }
-        setLoading(false);
-        setLoadingAction('');
     };
 
     const generateTags = async () => {
@@ -206,13 +212,14 @@ const DescriptionGenerator = () => {
         setLoadingAction('Generating tags...');
         const currentDesc = getCurrentDescription();
         const generator = new ProductPromptGenerator({ tone, language });
+        const signal = genSession.start();
         try {
             const response = await callWpApi('/generate-tags', 'POST', {
                 prompt: generator.productTags(productName, currentDesc),
                 tone,
                 language,
                 post_id: getPostId(),
-            }, { signal: getSignal() });
+            }, { signal });
             if (response.success) {
                 const tags = response.data.tags || [];
                 setGeneratedTags(tags);
@@ -223,12 +230,12 @@ const DescriptionGenerator = () => {
                 alert('Failed: ' + (response.data?.message || 'Unknown error'));
             }
         } catch (error) {
-            if (error.name !== 'AbortError') {
+            if (!isAbortError(error)) {
                 alert('Error: ' + (error.message || 'Error generating tags.'));
             }
+        } finally {
+            finishIfCurrent(signal);
         }
-        setLoading(false);
-        setLoadingAction('');
     };
 
     const generateSeoMeta = async () => {
@@ -239,13 +246,14 @@ const DescriptionGenerator = () => {
         setLoadingAction('Generating SEO meta...');
         const postId = getPostId();
         const generator = new ProductPromptGenerator({ tone, language });
+        const signal = genSession.start();
         try {
             const response = await callWpApi('/generate-seo-meta', 'POST', {
                 title_prompt: generator.seoMetaTitle(productName),
                 desc_prompt: generator.seoMetaDescription(productName, currentDesc),
                 kw_prompt: generator.seoFocusKeywords(productName, currentDesc),
                 post_id: postId,
-            }, { signal: getSignal() });
+            }, { signal });
             if (response.success) {
                 setSeoMeta(response.data);
                 setShowSeo(true);
@@ -253,12 +261,88 @@ const DescriptionGenerator = () => {
                 alert('Failed: ' + (response.data?.message || 'Unknown error'));
             }
         } catch (error) {
-            if (error.name !== 'AbortError') {
+            if (!isAbortError(error)) {
                 alert('Error: ' + (error.message || 'Error generating SEO meta.'));
             }
+        } finally {
+            finishIfCurrent(signal);
         }
-        setLoading(false);
-        setLoadingAction('');
+    };
+
+    const generateCategories = async () => {
+        const productName = getProductName();
+        if (!productName) { alert('Please enter a product name first.'); return; }
+        setLoading(true);
+        setLoadingAction('Suggesting categories...');
+        const generator = new ProductPromptGenerator({ tone, language });
+        const signal = genSession.start();
+        try {
+            const response = await callWpApi('/generate-categories', 'POST', {
+                prompt: generator.productCategories(productName, getCurrentDescription()),
+                post_id: getPostId(),
+            }, { signal });
+            if (response.success) {
+                const cats = response.data.categories || [];
+                setGeneratedCategories(cats);
+                setGeneratedDescription('Categories: ' + cats.join(', '));
+                setGenerationMethod('categories');
+                setInsertButtonText('Insert Categories');
+            } else {
+                alert('Failed: ' + (response.data?.message || 'Unknown error'));
+            }
+        } catch (error) {
+            if (!isAbortError(error)) {
+                alert('Error: ' + (error.message || 'Error generating categories.'));
+            }
+        } finally {
+            finishIfCurrent(signal);
+        }
+    };
+
+    const generateAttributes = async () => {
+        const productName = getProductName();
+        if (!productName) { alert('Please enter a product name first.'); return; }
+        setLoading(true);
+        setLoadingAction('Extracting attributes...');
+        const generator = new ProductPromptGenerator({ tone, language });
+        const signal = genSession.start();
+        try {
+            const response = await callWpApi('/generate-attributes', 'POST', {
+                prompt: generator.productAttributes(productName, getCurrentDescription()),
+                post_id: getPostId(),
+            }, { signal });
+            if (response.success) {
+                const attrs = response.data.attributes || [];
+                setGeneratedAttributes(attrs);
+                setGeneratedDescription(attrs.map(a => a.name + ': ' + a.value).join('\n'));
+                setGenerationMethod('attributes');
+                setInsertButtonText('Insert Attributes');
+            } else {
+                alert('Failed: ' + (response.data?.message || 'Unknown error'));
+            }
+        } catch (error) {
+            if (!isAbortError(error)) {
+                alert('Error: ' + (error.message || 'Error generating attributes.'));
+            }
+        } finally {
+            finishIfCurrent(signal);
+        }
+    };
+
+    const translateDescription = () => {
+        const currentDesc = getCurrentDescription();
+        if (!currentDesc.trim()) { alert('Please enter a description to translate.'); return; }
+        const generator = new ProductPromptGenerator({ tone, language });
+        setInsertButtonText('Insert Into Description');
+        submitPrompt('translate', generator.translateContent(currentDesc, 'product description'), 'Translating description...');
+    };
+
+    const summarizeToShort = () => {
+        const currentDesc = getCurrentDescription();
+        if (!currentDesc.trim()) { alert('Please enter a description to summarize.'); return; }
+        const generator = new ProductPromptGenerator({ tone, language });
+        setInsertButtonText('Insert Short Description');
+        submitPrompt('summarize', generator.summarizeContent(currentDesc, 80), 'Summarizing...');
     };
 
     const handleCustomPromptSubmit = () => {
@@ -269,11 +353,13 @@ const DescriptionGenerator = () => {
         if (generationMethod === 'improve-prompt') {
             const currentDesc = getCurrentDescription();
             if (!currentDesc.trim()) { alert('Please enter a description to improve.'); return; }
+            setInsertButtonText('Insert Into Description');
             submitPrompt('improve-prompt', generator.improveDescriptionCustom(currentDesc, productName, yourPrompt), 'Improving with prompt...');
         } else if (generationMethod === 'title') {
             setInsertButtonText('Insert to Title');
             submitPrompt('title', generator.improveTitleCustom(productName, yourPrompt), 'Improving title...');
         } else {
+            setInsertButtonText('Insert Into Description');
             submitPrompt('prompt', yourPrompt, 'Generating from prompt...');
         }
     };
@@ -282,24 +368,28 @@ const DescriptionGenerator = () => {
         if (!imagePrompt.trim()) { alert('Please enter an image prompt.'); return; }
         setImageLoading(true);
         const postId = getPostId();
+        const signal = genSession.start();
         try {
             const response = await callWpApi('/generate-image', 'POST', {
                 prompt: imagePrompt,
                 save_to_library: saveToLibrary,
                 set_as_featured: setAsFeatured,
                 post_id: postId,
-            }, { signal: getSignal() });
+            }, { signal });
             if (response.success) {
                 setGeneratedImage(response.data);
             } else {
                 alert('Failed: ' + (response.data?.message || 'Unknown error'));
             }
         } catch (error) {
-            if (error.name !== 'AbortError') {
+            if (!isAbortError(error)) {
                 alert('Error: ' + (error.message || 'Error generating image.'));
             }
+        } finally {
+            if (genSession.settle(signal)) {
+                setImageLoading(false);
+            }
         }
-        setImageLoading(false);
     };
 
     // =========================================================================
@@ -309,22 +399,16 @@ const DescriptionGenerator = () => {
     const insertDescription = () => {
         if (generationMethod === 'title') {
             insertToTitle(generatedDescription);
-        } else if (generationMethod === 'short_description') {
+        } else if (generationMethod === 'short_description' || generationMethod === 'summarize') {
             insertToShortDescription(generatedDescription);
         } else if (generationMethod === 'tags') {
             insertTags();
+        } else if (generationMethod === 'categories') {
+            insertCategories();
+        } else if (generationMethod === 'attributes') {
+            insertAttributes();
         } else {
             insertToProductDescription(generatedDescription);
-        }
-    };
-
-    const insertTagsIntoWooUi = (tags) => {
-        const input = document.getElementById('new-tag-product_tag');
-        if (!input) return;
-        input.value = tags.join(', ');
-        const addBtn = input.parentElement && input.parentElement.querySelector('.tagadd');
-        if (addBtn) {
-            addBtn.click();
         }
     };
 
@@ -334,7 +418,7 @@ const DescriptionGenerator = () => {
             : generatedDescription.replace(/^Tags:\s*/i, '').split(',').map(t => t.trim()).filter(Boolean);
         if (!tags.length) return;
 
-        insertTagsIntoWooUi(tags);
+        writeProductTags(tags);
 
         const postId = getPostId();
         if (postId) {
@@ -345,7 +429,7 @@ const DescriptionGenerator = () => {
                     post_id: postId,
                 });
             } catch (error) {
-                if (error.name !== 'AbortError') {
+                if (!isAbortError(error)) {
                     alert('Error: ' + (error.message || 'Could not save tags.'));
                     return;
                 }
@@ -356,6 +440,61 @@ const DescriptionGenerator = () => {
         setTimeout(() => setInsertButtonText('Insert Tags'), 2000);
     };
 
+    const insertCategories = async () => {
+        const cats = generatedCategories.length
+            ? generatedCategories
+            : generatedDescription.replace(/^Categories:\s*/i, '').split(',').map(t => t.trim()).filter(Boolean);
+        if (!cats.length) return;
+        const postId = getPostId();
+        if (postId) {
+            try {
+                const response = await callWpApi('/generate-categories', 'POST', {
+                    categories: cats,
+                    apply: true,
+                    post_id: postId,
+                });
+                writeProductCategories(response.data?.term_ids || []);
+            } catch (error) {
+                if (!isAbortError(error)) {
+                    alert('Error: ' + (error.message || 'Could not save categories.'));
+                    return;
+                }
+            }
+        }
+        setInsertButtonText('Categories Inserted');
+        setTimeout(() => setInsertButtonText('Insert Categories'), 2000);
+    };
+
+    const insertAttributes = async () => {
+        let attrs = generatedAttributes;
+        if (!attrs.length) {
+            attrs = generatedDescription.split('\n').map(line => {
+                const parts = line.split(':');
+                if (parts.length < 2) return null;
+                return { name: parts[0].trim(), value: parts.slice(1).join(':').trim() };
+            }).filter(Boolean);
+        }
+        if (!attrs.length) return;
+        writeProductAttributes(attrs);
+        const postId = getPostId();
+        if (postId) {
+            try {
+                await callWpApi('/generate-attributes', 'POST', {
+                    attributes: attrs,
+                    apply: true,
+                    post_id: postId,
+                });
+            } catch (error) {
+                if (!isAbortError(error)) {
+                    alert('Error: ' + (error.message || 'Could not save attributes.'));
+                    return;
+                }
+            }
+        }
+        setInsertButtonText('Attributes Inserted');
+        setTimeout(() => setInsertButtonText('Insert Attributes'), 2000);
+    };
+
     const handleUseTemplate = () => {
         const tpl = templates.find(t => t.id === selectedTemplate);
         if (!tpl) return;
@@ -363,44 +502,37 @@ const DescriptionGenerator = () => {
             title: getProductName(),
             content: getCurrentDescription(),
         });
+        setInsertButtonText('Insert Into Description');
         submitPrompt('template', filled, 'Generating from template...');
     };
 
     const insertToProductDescription = (content) => {
         setInsertButtonText('Inserting...');
-        if (typeof tinymce !== 'undefined') {
-            const editor = tinymce.get('content');
-            if (editor && !editor.isHidden()) {
-                editor.setContent(content);
-                setInsertButtonText('✅ Inserted');
-                setTimeout(() => setInsertButtonText('Insert Into Description'), 2000);
-                return;
-            }
-        }
-        const textarea = document.getElementById('content');
-        if (textarea) {
-            textarea.value = content;
+        if (writeWpEditorContent('content', content)) {
             setInsertButtonText('✅ Inserted');
             setTimeout(() => setInsertButtonText('Insert Into Description'), 2000);
+            return;
         }
+        setInsertButtonText('Insert Into Description');
+        alert('Could not find the product description editor.');
     };
 
     const insertToShortDescription = (content) => {
-        const el = document.getElementById('excerpt');
-        if (el) {
-            el.value = content;
+        if (writeWpEditorContent('excerpt', content)) {
             setInsertButtonText('✅ Inserted');
             setTimeout(() => setInsertButtonText('Insert Short Description'), 2000);
+            return;
         }
+        alert('Could not find the short description editor.');
     };
 
     const insertToTitle = (content) => {
-        const titleInput = document.querySelector('input[name="post_title"]');
-        if (titleInput) {
-            titleInput.value = content;
+        if (writePostTitle(content)) {
             setInsertButtonText('✅ Inserted');
             setTimeout(() => setInsertButtonText('Insert to Title'), 2000);
+            return;
         }
+        alert('Could not find the product title field.');
     };
 
     const copyToClipboard = (text) => {
@@ -501,6 +633,29 @@ const DescriptionGenerator = () => {
             {/* Action buttons — shown when not loading, no result, no custom prompt */}
             {!loading && !generatedDescription && !addPrompt && !showSeo && !showImagePanel && (
                 <div className="wacdmg-actions-grid">
+                    {contentGaps.length > 0 && (
+                        <div className="wacdmg-action-group wacdmg-gap-group">
+                            <span className="wacdmg-action-group-label">Missing on this product</span>
+                            <div className="wacdmg-gap-list">
+                                {contentGaps.filter(g => g !== 'image').map(gap => (
+                                    <button
+                                        type="button"
+                                        key={gap}
+                                        className="wacdmg-gap-chip"
+                                        onClick={() => {
+                                            if (gap === 'description') generateNameDescription();
+                                            else if (gap === 'excerpt') generateShortDescription();
+                                            else if (gap === 'tags') generateTags();
+                                            else if (gap === 'categories') generateCategories();
+                                            else if (gap === 'seo') generateSeoMeta();
+                                        }}
+                                    >
+                                        Fill {gap === 'excerpt' ? 'short description' : gap}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     {/* Description group */}
                     <div className="wacdmg-action-group">
                         <span className="wacdmg-action-group-label">📝 Description</span>
@@ -516,6 +671,12 @@ const DescriptionGenerator = () => {
                             </button>
                             <button type="button" id="wacdmg-btn-custom-prompt" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={() => { setGenerationMethod('prompt'); setAddPrompt(true); }}>
                                 Custom Prompt
+                            </button>
+                            <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={translateDescription}>
+                                Translate Description
+                            </button>
+                            <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={summarizeToShort}>
+                                Summarize to Short Description
                             </button>
                         </div>
                     </div>
@@ -542,6 +703,12 @@ const DescriptionGenerator = () => {
                             </button>
                             <button type="button" id="wacdmg-btn-tags" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={generateTags}>
                                 Generate Tags
+                            </button>
+                            <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={generateCategories}>
+                                Suggest Categories
+                            </button>
+                            <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={generateAttributes}>
+                                Extract Attributes
                             </button>
                         </div>
                     </div>

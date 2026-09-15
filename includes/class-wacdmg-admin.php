@@ -29,6 +29,10 @@ class WACDMG_Admin {
         add_action( 'admin_enqueue_scripts', array( $this, 'wacdmg_enqueue_admin_scripts' ) );
         add_action( 'enqueue_block_editor_assets', array( $this, 'wacdmg_enqueue_admin_block_scripts' ) );
         add_filter( 'attachment_fields_to_edit', array( $this, 'wacdmg_attachment_alt_field' ), 10, 2 );
+        add_action( 'product_cat_edit_form', array( $this, 'wacdmg_render_term_panel' ) );
+        add_action( 'product_tag_edit_form', array( $this, 'wacdmg_render_term_panel' ) );
+        add_filter( 'bulk_actions-edit-product', array( $this, 'wacdmg_register_product_bulk_action' ) );
+        add_filter( 'handle_bulk_actions-edit-product', array( $this, 'wacdmg_handle_product_bulk_action' ), 10, 3 );
     }
 
     /**
@@ -85,6 +89,15 @@ class WACDMG_Admin {
             'wacdmg-usage-log',
             array( $this, 'wacdmg_render_usage_log_page' )
         );
+
+        add_submenu_page(
+            'wacdmg-settings',
+            __( 'Bulk Fill', 'wacdmg-ai-content-assistant' ),
+            __( 'Bulk Fill', 'wacdmg-ai-content-assistant' ),
+            'edit_posts',
+            'wacdmg-bulk-products',
+            array( $this, 'wacdmg_render_bulk_products_page' )
+        );
     }
 
     /**
@@ -99,12 +112,13 @@ class WACDMG_Admin {
             'ai-assistant_page_wacdmg-image-generator',
             'ai-assistant_page_wacdmg-content-templates',
             'ai-assistant_page_wacdmg-usage-log',
+            'ai-assistant_page_wacdmg-bulk-products',
         );
 
-        // Also enqueue on WooCommerce classic product edit screen only.
         $is_product_page = $this->wacdmg_is_classic_product_screen( $hook );
+        $is_term_page    = $this->wacdmg_is_product_term_screen();
 
-        $should_enqueue = in_array( $hook, $wacdmg_pages, true ) || $is_product_page;
+        $should_enqueue = in_array( $hook, $wacdmg_pages, true ) || $is_product_page || $is_term_page;
 
         $this->wacdmg_enqueue_media_alt_script( $hook );
 
@@ -155,10 +169,19 @@ class WACDMG_Admin {
                 'ai-assistant_page_wacdmg-image-generator'  => 'image-generator',
                 'ai-assistant_page_wacdmg-content-templates' => 'content-templates',
                 'ai-assistant_page_wacdmg-usage-log'         => 'usage-log',
+                'ai-assistant_page_wacdmg-bulk-products'     => 'bulk-products',
             );
             $current_page = $page_map[ $hook ] ?? 'settings';
         } elseif ( $is_product_page ) {
             $current_page = 'product-editor';
+        } elseif ( $is_term_page ) {
+            $current_page = 'term-editor';
+        }
+
+        $taxonomy = '';
+        if ( $is_term_page ) {
+            $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+            $taxonomy = ( $screen && ! empty( $screen->taxonomy ) ) ? $screen->taxonomy : '';
         }
 
         wp_localize_script( 'wacdmg-admin-script', 'wacdmgAdmin', array(
@@ -171,6 +194,7 @@ class WACDMG_Admin {
             'pluginUrl'   => WACDMG_PLUGIN_URL,
             'wpDate'      => current_time( 'Y-m-d' ),
             'wpMonth'     => current_time( 'Y-m' ),
+            'taxonomy'    => $taxonomy,
         ) );
     }
 
@@ -200,6 +224,19 @@ class WACDMG_Admin {
         }
 
         return false;
+    }
+
+    /**
+     * Whether the current screen is a WooCommerce product category or tag editor.
+     *
+     * @return bool
+     */
+    private function wacdmg_is_product_term_screen() {
+        $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+        if ( ! $screen || empty( $screen->taxonomy ) ) {
+            return false;
+        }
+        return in_array( $screen->taxonomy, array( 'product_cat', 'product_tag' ), true );
     }
 
     /**
@@ -351,6 +388,56 @@ class WACDMG_Admin {
             return;
         }
         include_once WACDMG_PLUGIN_DIR . 'templates/admin-wacdmg-usage-log.php';
+    }
+
+    /**
+     * Render the bulk empty-field fill page.
+     */
+    public function wacdmg_render_bulk_products_page() {
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            return;
+        }
+        include_once WACDMG_PLUGIN_DIR . 'templates/admin-wacdmg-bulk-products.php';
+    }
+
+    /**
+     * Mount the AI assistant on product category and tag edit screens.
+     */
+    public function wacdmg_render_term_panel() {
+        echo '<div id="wacdmg-term-container" class="wacdmg-term-container"></div>';
+    }
+
+    /**
+     * Add a Products list bulk action for empty-field fill.
+     *
+     * @param array $actions Bulk actions.
+     * @return array
+     */
+    public function wacdmg_register_product_bulk_action( $actions ) {
+        $actions['wacdmg_fill_empty'] = __( 'AI fill empty content', 'wacdmg-ai-content-assistant' );
+        return $actions;
+    }
+
+    /**
+     * Send selected products to the bulk fill review screen.
+     *
+     * @param string $redirect Redirect URL.
+     * @param string $action   Bulk action slug.
+     * @param array  $post_ids Selected IDs.
+     * @return string
+     */
+    public function wacdmg_handle_product_bulk_action( $redirect, $action, $post_ids ) {
+        if ( $action !== 'wacdmg_fill_empty' ) {
+            return $redirect;
+        }
+        $ids = array_slice( array_values( array_unique( array_filter( array_map( 'intval', $post_ids ) ) ) ), 0, 20 );
+        return add_query_arg(
+            array(
+                'page' => 'wacdmg-bulk-products',
+                'ids'  => implode( ',', $ids ),
+            ),
+            admin_url( 'admin.php' )
+        );
     }
 
     /**

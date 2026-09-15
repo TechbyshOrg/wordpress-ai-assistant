@@ -10,6 +10,7 @@ import { useSelect } from '@wordpress/data';
 import { Button, TextareaControl, ToggleControl, Notice, Spinner, SelectControl } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
+import { createGenerationSession, isAbortError } from '../utils/generationRequest';
 import { getPluginDocumentSettingPanel } from '../utils/documentPanel';
 
 const PluginDocumentSettingPanel = getPluginDocumentSettingPanel();
@@ -33,7 +34,7 @@ const AIImagePanel = () => {
     const [generatedUrl, setGeneratedUrl] = useState('');
     const [attachmentId, setAttachmentId] = useState(null);
     const [notice, setNotice]           = useState({ text: '', status: '' });
-    const abortRef = useRef(null);
+    const genSession = useRef(createGenerationSession()).current;
 
     const postId    = useSelect(select => select('core/editor').getCurrentPostId());
     const postTitle = useSelect(select => select('core/editor').getEditedPostAttribute('title') || '');
@@ -48,10 +49,7 @@ const AIImagePanel = () => {
         setLoading(true);
         setNotice({ text: '', status: '' });
         setGeneratedUrl('');
-        if (abortRef.current) {
-            abortRef.current.abort();
-        }
-        abortRef.current = new AbortController();
+        const signal = genSession.start();
 
         try {
             const response = await callWpApi('/generate-image', 'POST', {
@@ -59,7 +57,7 @@ const AIImagePanel = () => {
                 save_to_library: saveToLib,
                 set_as_featured: setFeatured,
                 post_id: postId,
-            }, { signal: abortRef.current.signal });
+            }, { signal });
 
             if (response.success) {
                 setGeneratedUrl(response.data.url);
@@ -74,12 +72,14 @@ const AIImagePanel = () => {
                 setNotice({ text: response.data?.message || __('Failed to generate image.', 'wacdmg-ai-content-assistant'), status: 'error' });
             }
         } catch (error) {
-            if (error.name !== 'AbortError') {
+            if (!isAbortError(error)) {
                 setNotice({ text: error.message || __('Network error. Check your image generation settings.', 'wacdmg-ai-content-assistant'), status: 'error' });
             }
+        } finally {
+            if (genSession.settle(signal)) {
+                setLoading(false);
+            }
         }
-
-        setLoading(false);
     };
 
     // Auto-fill prompt from post title
@@ -141,7 +141,7 @@ const AIImagePanel = () => {
             {loading && (
                 <Button
                     variant="secondary"
-                    onClick={() => { abortRef.current?.abort(); setLoading(false); }}
+                    onClick={() => { genSession.cancel(); setLoading(false); }}
                     style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}
                 >
                     {__('Cancel', 'wacdmg-ai-content-assistant')}

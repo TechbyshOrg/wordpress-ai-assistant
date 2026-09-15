@@ -6,6 +6,8 @@ import Settings from './components/Settings';
 import ImageGenerator from './components/ImageGenerator';
 import ContentTemplates from './components/ContentTemplates';
 import UsageLog from './components/UsageLog';
+import TermAssistant from './components/TermAssistant';
+import BulkFill from './components/BulkFill';
 
 /**
  * Multi-page React mount.
@@ -32,4 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     mountApp('wacdmg-image-generator-container', ImageGenerator);
     mountApp('wacdmg-templates-container', ContentTemplates);
     mountApp('wacdmg-usage-log-container', UsageLog);
+    mountApp('wacdmg-term-container', TermAssistant);
+    mountApp('wacdmg-bulk-fill-container', BulkFill);
 });

@@ -10,6 +10,7 @@ import { useSelect } from '@wordpress/data';
 import { Button, TextControl, TextareaControl, Notice, Spinner } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
+import { createGenerationSession, isAbortError } from '../utils/generationRequest';
 import PostPromptGenerator from '../utils/PromptGenerator';
 import { getPluginDocumentSettingPanel } from '../utils/documentPanel';
 
@@ -21,7 +22,7 @@ const AISeoPanel = () => {
     const [seoTitle, setSeoTitle]   = useState('');
     const [seoDesc, setSeoDesc]     = useState('');
     const [keywords, setKeywords]   = useState('');
-    const abortRef = useRef(null);
+    const genSession = useRef(createGenerationSession()).current;
 
     const postTitle   = useSelect(select => select('core/editor').getEditedPostAttribute('title') || '');
     const postId      = useSelect(select => select('core/editor').getCurrentPostId());
@@ -43,10 +44,7 @@ const AISeoPanel = () => {
 
         setLoading(true);
         setNotice({ text: '', status: '' });
-        if (abortRef.current) {
-            abortRef.current.abort();
-        }
-        abortRef.current = new AbortController();
+        const signal = genSession.start();
 
         const generator = new PostPromptGenerator({ tone: 'professional', language: 'English' });
 
@@ -56,7 +54,7 @@ const AISeoPanel = () => {
                 desc_prompt:  generator.seoMetaDescription(postTitle, postContent, keywords),
                 kw_prompt:    generator.seoFocusKeywords(postTitle, postContent),
                 post_id:      postId,
-            }, { signal: abortRef.current.signal });
+            }, { signal });
 
             if (response.success) {
                 const data = response.data;
@@ -76,12 +74,14 @@ const AISeoPanel = () => {
                 });
             }
         } catch (error) {
-            if (error.name !== 'AbortError') {
+            if (!isAbortError(error)) {
                 setNotice({ text: error.message || __('Network error. Check your AI settings.', 'wacdmg-ai-content-assistant'), status: 'error' });
             }
+        } finally {
+            if (genSession.settle(signal)) {
+                setLoading(false);
+            }
         }
-
-        setLoading(false);
     };
 
     return (
@@ -115,7 +115,7 @@ const AISeoPanel = () => {
             {loading && (
                 <Button
                     variant="secondary"
-                    onClick={() => { abortRef.current?.abort(); setLoading(false); }}
+                    onClick={() => { genSession.cancel(); setLoading(false); }}
                     style={{ marginBottom: '12px', width: '100%', justifyContent: 'center' }}
                 >
                     {__('Cancel', 'wacdmg-ai-content-assistant')}

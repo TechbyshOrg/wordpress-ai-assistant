@@ -72,6 +72,54 @@ Return only a comma-separated list of tags. No numbers, no explanation, no extra
 Example format: tag one, tag two, tag three`;
     }
 
+    translateContent(content, fieldLabel = 'content') {
+        return `Translate the following ${fieldLabel} into ${this.language}.
+Preserve facts, numbers, product names, HTML tags, and shortcodes. Do not add marketing claims that are not in the source.
+Return only the translated ${fieldLabel}.
+
+"""${content}"""`;
+    }
+
+    summarizeContent(content, maxWords = 80) {
+        return `Summarize the following product content in ${this.language}. Tone: ${this.tone}.
+Maximum ${maxWords} words. Keep key facts. Return only the summary as plain text.
+
+"""${content}"""`;
+    }
+
+    productCategories(productName, description = '') {
+        const descHint = description ? `\nDescription: "${description.substring(0, 500)}"` : '';
+        return `Suggest 2-5 WooCommerce product categories for "${productName}".${descHint}
+Write in ${this.language}.
+Use short retail category names. Return only a comma-separated list. No explanation.`;
+    }
+
+    productAttributes(productName, description = '') {
+        const descHint = description ? `\nDescription: "${description.substring(0, 500)}"` : '';
+        return `Extract 3-8 visible WooCommerce product attributes for "${productName}".${descHint}
+Write in ${this.language}.
+Return only one attribute per line as Name: Value. Example:
+Material: Cotton
+Color: Navy
+Do not invent technical specs that are not implied by the name or description.`;
+    }
+
+    termArchiveDescription(termName, taxonomyLabel = 'category') {
+        return `Write an SEO-friendly archive description for the WooCommerce ${taxonomyLabel} "${termName}".
+Write in ${this.language}. Tone: ${this.tone}.
+2-4 sentences, helpful for shoppers on a category/tag archive page.
+Return only the description as HTML paragraphs. No heading, no explanation.`;
+    }
+
+    improveTermDescription(termName, current, taxonomyLabel = 'category') {
+        return `Improve this WooCommerce ${taxonomyLabel} archive description for "${termName}":
+
+"${current}"
+
+Write in ${this.language}. Tone: ${this.tone}.
+Keep facts, improve clarity and SEO. Return only the improved description as HTML.`;
+    }
+
     // =========================================================================
     // SEO Meta Prompts
     // =========================================================================

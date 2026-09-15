@@ -50,6 +50,11 @@ class WACDMG_Admin_API {
         $this->wacdmg_register_route( '/generate-paragraph-content', array( $this, 'wacdmg_generate_description' ), 'POST', $can_generate );
         $this->wacdmg_register_route( '/generate-short-description', array( $this, 'wacdmg_generate_short_description' ), 'POST', $can_generate );
         $this->wacdmg_register_route( '/generate-tags', array( $this, 'wacdmg_generate_tags' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/generate-categories', array( $this, 'wacdmg_generate_categories' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/generate-attributes', array( $this, 'wacdmg_generate_attributes' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/product-content-status', array( $this, 'wacdmg_product_content_status' ), 'GET', $can_generate );
+        $this->wacdmg_register_route( '/products-content-scan', array( $this, 'wacdmg_products_content_scan' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/apply-product-content', array( $this, 'wacdmg_apply_product_content' ), 'POST', $can_generate );
         $this->wacdmg_register_route( '/generate-seo-meta', array( $this, 'wacdmg_generate_seo_meta' ), 'POST', $can_generate );
         $this->wacdmg_register_route( '/generate-alt-text', array( $this, 'wacdmg_generate_alt_text' ), 'POST', $can_generate );
         $this->wacdmg_register_route( '/chat', array( $this, 'wacdmg_chat' ), 'POST', $can_generate );
@@ -479,8 +484,10 @@ class WACDMG_Admin_API {
             return new WP_REST_Response( array(
                 'success' => true,
                 'data'    => array(
-                    'tags'    => $tags,
-                    'applied' => $applied,
+                    'tags'     => $tags,
+                    'applied'  => ! empty( $applied['success'] ),
+                    'term_ids' => isset( $applied['term_ids'] ) ? $applied['term_ids'] : array(),
+                    'taxonomy' => isset( $applied['taxonomy'] ) ? $applied['taxonomy'] : '',
                 ),
             ), 200 );
         }
@@ -495,7 +502,7 @@ class WACDMG_Admin_API {
             $tags = array_filter( $tags );
             $tags = array_values( $tags );
 
-            $applied = false;
+            $applied = array();
             if ( $apply && $post_id ) {
                 $applied = $this->wacdmg_apply_tags_to_post( $post_id, $tags );
             }
@@ -503,9 +510,11 @@ class WACDMG_Admin_API {
             return new WP_REST_Response( array(
                 'success' => true,
                 'data'    => array(
-                    'tags'    => $tags,
-                    'raw'     => $raw,
-                    'applied' => $applied,
+                    'tags'     => $tags,
+                    'raw'      => $raw,
+                    'applied'  => ! empty( $applied['success'] ),
+                    'term_ids' => isset( $applied['term_ids'] ) ? $applied['term_ids'] : array(),
+                    'taxonomy' => isset( $applied['taxonomy'] ) ? $applied['taxonomy'] : '',
                 ),
             ), 200 );
         }
@@ -518,20 +527,438 @@ class WACDMG_Admin_API {
      *
      * @param int   $post_id Post ID.
      * @param array $tags    Tag names.
-     * @return bool
+     * @return array { success: bool, taxonomy: string, term_ids: int[] }
      */
     private function wacdmg_apply_tags_to_post( $post_id, $tags ) {
         if ( ! $post_id || empty( $tags ) || ! current_user_can( 'edit_post', $post_id ) ) {
-            return false;
+            return array(
+                'success'  => false,
+                'taxonomy' => '',
+                'term_ids' => array(),
+            );
         }
         $taxonomy = ( get_post_type( $post_id ) === 'product' && taxonomy_exists( 'product_tag' ) )
             ? 'product_tag'
             : 'post_tag';
         if ( ! taxonomy_exists( $taxonomy ) ) {
-            return false;
+            return array(
+                'success'  => false,
+                'taxonomy' => $taxonomy,
+                'term_ids' => array(),
+            );
         }
         wp_set_object_terms( $post_id, $tags, $taxonomy, true );
-        return true;
+        $term_ids = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'ids' ) );
+        if ( is_wp_error( $term_ids ) ) {
+            $term_ids = array();
+        }
+        return array(
+            'success'  => true,
+            'taxonomy' => $taxonomy,
+            'term_ids' => array_map( 'intval', $term_ids ),
+        );
+    }
+
+    /**
+     * Split AI text into a clean list of names.
+     *
+     * @param string $raw Raw model output.
+     * @return array
+     */
+    private function wacdmg_parse_comma_list( $raw ) {
+        $raw = wp_strip_all_tags( (string) $raw );
+        $parts = preg_split( '/[,;\n]+/', $raw );
+        $items = array();
+        foreach ( $parts as $part ) {
+            $part = trim( $part );
+            $part = preg_replace( '/^[\-\*\d\.\)\s]+/', '', $part );
+            if ( $part !== '' ) {
+                $items[] = sanitize_text_field( $part );
+            }
+        }
+        return array_values( array_unique( $items ) );
+    }
+
+    /**
+     * Parse "Name: Value" attribute lines from AI output.
+     *
+     * @param string $raw Raw model output.
+     * @return array
+     */
+    private function wacdmg_parse_attribute_pairs( $raw ) {
+        $raw = wp_strip_all_tags( (string) $raw );
+        $chunks = preg_split( '/[\n\|]+/', $raw );
+        $pairs = array();
+        foreach ( $chunks as $chunk ) {
+            if ( strpos( $chunk, ':' ) === false ) {
+                continue;
+            }
+            $bits = array_map( 'trim', explode( ':', $chunk, 2 ) );
+            if ( empty( $bits[0] ) || empty( $bits[1] ) ) {
+                continue;
+            }
+            $pairs[] = array(
+                'name'  => sanitize_text_field( $bits[0] ),
+                'value' => sanitize_text_field( $bits[1] ),
+            );
+        }
+        return $pairs;
+    }
+
+    /**
+     * Generate and optionally apply product categories.
+     *
+     * @param WP_REST_Request $request Request.
+     * @return WP_REST_Response
+     */
+    public function wacdmg_generate_categories( WP_REST_Request $request ) {
+        $post_id = intval( $request->get_param( 'post_id' ) );
+        $apply   = (bool) $request->get_param( 'apply' );
+        $incoming = $request->get_param( 'categories' );
+
+        if ( $apply && is_array( $incoming ) && $post_id ) {
+            $names = array_values( array_filter( array_map( 'sanitize_text_field', $incoming ) ) );
+            $applied = $this->wacdmg_apply_categories_to_product( $post_id, $names );
+            return new WP_REST_Response( array(
+                'success' => true,
+                'data'    => array_merge( array( 'categories' => $names ), $applied ),
+            ), 200 );
+        }
+
+        $prompt = $request->get_param( 'prompt' );
+        $result = $this->wacdmg_run_ai_prompt( $prompt );
+        if ( ! $result['success'] ) {
+            return $this->wacdmg_error_rest_response( $result );
+        }
+
+        $this->wacdmg_log_usage( 'categories' );
+        $names = $this->wacdmg_parse_comma_list( $result['description'] );
+        $applied = array( 'applied' => false, 'term_ids' => array(), 'taxonomy' => 'product_cat' );
+        if ( $apply && $post_id ) {
+            $applied = $this->wacdmg_apply_categories_to_product( $post_id, $names );
+        }
+
+        return new WP_REST_Response( array(
+            'success' => true,
+            'data'    => array_merge( array(
+                'categories' => $names,
+                'raw'        => $result['description'],
+            ), $applied ),
+        ), 200 );
+    }
+
+    /**
+     * Append product categories, matching existing terms when possible.
+     *
+     * @param int   $post_id Post ID.
+     * @param array $names   Category names.
+     * @return array
+     */
+    private function wacdmg_apply_categories_to_product( $post_id, $names ) {
+        $empty = array(
+            'applied'  => false,
+            'term_ids' => array(),
+            'taxonomy' => 'product_cat',
+        );
+        if ( ! $post_id || empty( $names ) || ! current_user_can( 'edit_post', $post_id ) || ! taxonomy_exists( 'product_cat' ) ) {
+            return $empty;
+        }
+        if ( get_post_type( $post_id ) !== 'product' ) {
+            return $empty;
+        }
+
+        $term_ids = array();
+        foreach ( $names as $name ) {
+            $existing = get_term_by( 'name', $name, 'product_cat' );
+            if ( $existing && ! is_wp_error( $existing ) ) {
+                $term_ids[] = (int) $existing->term_id;
+                continue;
+            }
+            $inserted = wp_insert_term( $name, 'product_cat' );
+            if ( ! is_wp_error( $inserted ) && ! empty( $inserted['term_id'] ) ) {
+                $term_ids[] = (int) $inserted['term_id'];
+            }
+        }
+        $term_ids = array_values( array_unique( array_filter( $term_ids ) ) );
+        if ( empty( $term_ids ) ) {
+            return $empty;
+        }
+        wp_set_object_terms( $post_id, $term_ids, 'product_cat', true );
+        $all = wp_get_object_terms( $post_id, 'product_cat', array( 'fields' => 'ids' ) );
+        if ( is_wp_error( $all ) ) {
+            $all = $term_ids;
+        }
+        return array(
+            'applied'  => true,
+            'term_ids' => array_map( 'intval', $all ),
+            'taxonomy' => 'product_cat',
+        );
+    }
+
+    /**
+     * Generate and optionally apply custom product attributes.
+     *
+     * @param WP_REST_Request $request Request.
+     * @return WP_REST_Response
+     */
+    public function wacdmg_generate_attributes( WP_REST_Request $request ) {
+        $post_id  = intval( $request->get_param( 'post_id' ) );
+        $apply    = (bool) $request->get_param( 'apply' );
+        $incoming = $request->get_param( 'attributes' );
+
+        if ( $apply && is_array( $incoming ) && $post_id ) {
+            $pairs = array();
+            foreach ( $incoming as $row ) {
+                if ( ! is_array( $row ) ) {
+                    continue;
+                }
+                $name  = sanitize_text_field( $row['name'] ?? '' );
+                $value = sanitize_text_field( $row['value'] ?? '' );
+                if ( $name && $value ) {
+                    $pairs[] = array( 'name' => $name, 'value' => $value );
+                }
+            }
+            $applied = $this->wacdmg_apply_attributes_to_product( $post_id, $pairs );
+            return new WP_REST_Response( array(
+                'success' => true,
+                'data'    => array(
+                    'attributes' => $pairs,
+                    'applied'    => ! empty( $applied['success'] ),
+                ),
+            ), 200 );
+        }
+
+        $prompt = $request->get_param( 'prompt' );
+        $result = $this->wacdmg_run_ai_prompt( $prompt );
+        if ( ! $result['success'] ) {
+            return $this->wacdmg_error_rest_response( $result );
+        }
+
+        $this->wacdmg_log_usage( 'attributes' );
+        $pairs = $this->wacdmg_parse_attribute_pairs( $result['description'] );
+        $applied = array( 'success' => false );
+        if ( $apply && $post_id ) {
+            $applied = $this->wacdmg_apply_attributes_to_product( $post_id, $pairs );
+        }
+
+        return new WP_REST_Response( array(
+            'success' => true,
+            'data'    => array(
+                'attributes' => $pairs,
+                'raw'        => $result['description'],
+                'applied'    => ! empty( $applied['success'] ),
+            ),
+        ), 200 );
+    }
+
+    /**
+     * Merge custom visible attributes onto a WooCommerce product.
+     *
+     * @param int   $post_id Product ID.
+     * @param array $pairs   Name/value pairs.
+     * @return array
+     */
+    private function wacdmg_apply_attributes_to_product( $post_id, $pairs ) {
+        if ( ! $post_id || empty( $pairs ) || ! current_user_can( 'edit_post', $post_id ) ) {
+            return array( 'success' => false );
+        }
+        if ( get_post_type( $post_id ) !== 'product' || ! function_exists( 'wc_get_product' ) ) {
+            return array( 'success' => false );
+        }
+
+        $product = wc_get_product( $post_id );
+        if ( ! $product ) {
+            return array( 'success' => false );
+        }
+
+        $existing = $product->get_attributes();
+        if ( ! is_array( $existing ) ) {
+            $existing = array();
+        }
+
+        foreach ( $pairs as $pair ) {
+            $slug = sanitize_title( $pair['name'] );
+            if ( $slug === '' ) {
+                continue;
+            }
+            if ( isset( $existing[ $slug ] ) || isset( $existing[ 'pa_' . $slug ] ) ) {
+                continue;
+            }
+            $options = array_values( array_filter( array_map( 'trim', explode( '|', $pair['value'] ) ) ) );
+            if ( class_exists( 'WC_Product_Attribute' ) ) {
+                $attribute = new WC_Product_Attribute();
+                $attribute->set_id( 0 );
+                $attribute->set_name( $pair['name'] );
+                $attribute->set_options( $options );
+                $attribute->set_visible( true );
+                $attribute->set_variation( false );
+                $existing[ $slug ] = $attribute;
+            }
+        }
+
+        $product->set_attributes( $existing );
+        $product->save();
+        return array( 'success' => true );
+    }
+
+    /**
+     * Empty-field checklist for one product.
+     *
+     * @param WP_REST_Request $request Request.
+     * @return WP_REST_Response
+     */
+    public function wacdmg_product_content_status( WP_REST_Request $request ) {
+        $post_id = intval( $request->get_param( 'post_id' ) );
+        if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => 'Invalid product.' ),
+            ), 403 );
+        }
+        return new WP_REST_Response( array(
+            'success' => true,
+            'data'    => $this->wacdmg_get_product_content_status( $post_id ),
+        ), 200 );
+    }
+
+    /**
+     * Scan selected products for empty content fields.
+     *
+     * @param WP_REST_Request $request Request.
+     * @return WP_REST_Response
+     */
+    public function wacdmg_products_content_scan( WP_REST_Request $request ) {
+        $ids = $request->get_param( 'ids' );
+        if ( ! is_array( $ids ) ) {
+            $ids = array();
+        }
+        $ids = array_slice( array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) ), 0, 20 );
+        $items = array();
+        foreach ( $ids as $post_id ) {
+            if ( get_post_type( $post_id ) !== 'product' || ! current_user_can( 'edit_post', $post_id ) ) {
+                continue;
+            }
+            $items[] = $this->wacdmg_get_product_content_status( $post_id );
+        }
+        return new WP_REST_Response( array(
+            'success' => true,
+            'data'    => array( 'products' => $items ),
+        ), 200 );
+    }
+
+    /**
+     * Build empty-field status for a product.
+     *
+     * @param int $post_id Product ID.
+     * @return array
+     */
+    private function wacdmg_get_product_content_status( $post_id ) {
+        $post = get_post( $post_id );
+        $title = $post ? $post->post_title : '';
+        $content = $post ? trim( wp_strip_all_tags( $post->post_content ) ) : '';
+        $excerpt = $post ? trim( wp_strip_all_tags( $post->post_excerpt ) ) : '';
+        $tag_ids = taxonomy_exists( 'product_tag' ) ? wp_get_object_terms( $post_id, 'product_tag', array( 'fields' => 'ids' ) ) : array();
+        $cat_ids = taxonomy_exists( 'product_cat' ) ? wp_get_object_terms( $post_id, 'product_cat', array( 'fields' => 'ids' ) ) : array();
+        if ( is_wp_error( $tag_ids ) ) {
+            $tag_ids = array();
+        }
+        if ( is_wp_error( $cat_ids ) ) {
+            $cat_ids = array();
+        }
+        $tag_count = count( $tag_ids );
+        $cat_count = count( $cat_ids );
+
+        $seo_empty = true;
+        if ( class_exists( 'WACDMG_SEO' ) ) {
+            $seo = new WACDMG_SEO();
+            $meta = $seo->wacdmg_get_existing_seo_meta( $post_id );
+            $seo_empty = empty( $meta['seo_title'] ) && empty( $meta['meta_description'] );
+        }
+
+        $featured = (bool) get_post_thumbnail_id( $post_id );
+        $gaps = array();
+        if ( $content === '' || str_word_count( $content ) < 20 ) {
+            $gaps[] = 'description';
+        }
+        if ( $excerpt === '' ) {
+            $gaps[] = 'excerpt';
+        }
+        if ( ! $tag_count ) {
+            $gaps[] = 'tags';
+        }
+        $uncat = taxonomy_exists( 'product_cat' ) ? get_term_by( 'slug', 'uncategorized', 'product_cat' ) : false;
+        $only_uncat = $cat_count === 1 && $uncat && in_array( (int) $uncat->term_id, $cat_ids, true );
+        if ( $cat_count === 0 || $only_uncat ) {
+            $gaps[] = 'categories';
+        }
+        if ( $seo_empty ) {
+            $gaps[] = 'seo';
+        }
+        if ( ! $featured ) {
+            $gaps[] = 'image';
+        }
+
+        return array(
+            'id'         => $post_id,
+            'title'      => $title,
+            'edit_url'   => get_edit_post_link( $post_id, 'raw' ),
+            'gaps'       => $gaps,
+            'has_title'  => $title !== '',
+            'content'    => $content,
+            'excerpt'    => $excerpt,
+        );
+    }
+
+    /**
+     * Apply generated fields to a product without wiping unspecified data.
+     *
+     * @param WP_REST_Request $request Request.
+     * @return WP_REST_Response
+     */
+    public function wacdmg_apply_product_content( WP_REST_Request $request ) {
+        $post_id = intval( $request->get_param( 'post_id' ) );
+        if ( ! $post_id || get_post_type( $post_id ) !== 'product' || ! current_user_can( 'edit_post', $post_id ) ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => 'You cannot edit this product.' ),
+            ), 403 );
+        }
+
+        $update = array( 'ID' => $post_id );
+        $title = $request->get_param( 'title' );
+        $content = $request->get_param( 'content' );
+        $excerpt = $request->get_param( 'excerpt' );
+        if ( is_string( $title ) && $title !== '' ) {
+            $update['post_title'] = sanitize_text_field( $title );
+        }
+        if ( is_string( $content ) && $content !== '' ) {
+            $update['post_content'] = wp_kses_post( $content );
+        }
+        if ( is_string( $excerpt ) && $excerpt !== '' ) {
+            $update['post_excerpt'] = wp_kses_post( $excerpt );
+        }
+        if ( count( $update ) > 1 ) {
+            wp_update_post( $update );
+        }
+
+        $tags = $request->get_param( 'tags' );
+        if ( is_array( $tags ) && ! empty( $tags ) ) {
+            $this->wacdmg_apply_tags_to_post( $post_id, array_map( 'sanitize_text_field', $tags ) );
+        }
+        $categories = $request->get_param( 'categories' );
+        if ( is_array( $categories ) && ! empty( $categories ) ) {
+            $this->wacdmg_apply_categories_to_product( $post_id, array_map( 'sanitize_text_field', $categories ) );
+        }
+        $seo = $request->get_param( 'seo' );
+        if ( is_array( $seo ) && class_exists( 'WACDMG_SEO' ) ) {
+            $writer = new WACDMG_SEO();
+            $writer->wacdmg_write_seo_meta( $post_id, $seo );
+        }
+
+        return new WP_REST_Response( array(
+            'success' => true,
+            'data'    => $this->wacdmg_get_product_content_status( $post_id ),
+        ), 200 );
     }
 
     /**

@@ -14,6 +14,67 @@ class PostPromptGenerator {
     // Gutenberg Post Prompts
     // =========================================================================
 
+    productNameDescription(productName) {
+        return `Generate a WooCommerce-ready product description for: "${productName}".
+Write in ${this.language}. Tone: ${this.tone}.
+Include key benefits, features, and a compelling call to action.
+Use ${this.format} formatting with bullet points.
+Return only the description — no introductions, explanations, or additional commentary.`;
+    }
+
+    productShortDescription(productName, keywords = '') {
+        const kwHint = keywords ? ` Keywords to include: ${keywords}.` : '';
+        return `Write a short WooCommerce product summary (2-3 sentences, max 100 words) for: "${productName}".
+Write in ${this.language}. Tone: ${this.tone}.${kwHint}
+Return only the short description as plain text. No HTML needed.`;
+    }
+
+    improveTitle(productName) {
+        return `Improve this product title for an online store: "${productName}"
+Write in ${this.language}. Tone: ${this.tone}.
+Make it SEO-friendly, scannable, and under 70 characters.
+Return only the improved title as plain text — no quotes, no explanation.`;
+    }
+
+    productTags(productName, description = '') {
+        const descHint = description ? `\nProduct description: "${description.substring(0, 500)}"` : '';
+        return `Generate 8-12 relevant product tags for "${productName}".${descHint}
+Write in ${this.language}.
+Return only a comma-separated list of tags. No numbers, no explanation, no extra text.`;
+    }
+
+    translateContent(content, fieldLabel = 'content') {
+        return `Translate the following ${fieldLabel} into ${this.language}.
+Preserve facts, numbers, product names, HTML tags, and shortcodes. Do not add marketing claims that are not in the source.
+Return only the translated ${fieldLabel}.
+
+"""${content}"""`;
+    }
+
+    summarizeContent(content, maxWords = 80) {
+        return `Summarize the following product content in ${this.language}. Tone: ${this.tone}.
+Maximum ${maxWords} words. Keep key facts. Return only the summary as plain text.
+
+"""${content}"""`;
+    }
+
+    productCategories(productName, description = '') {
+        const descHint = description ? `\nDescription: "${description.substring(0, 500)}"` : '';
+        return `Suggest 2-5 WooCommerce product categories for "${productName}".${descHint}
+Write in ${this.language}.
+Use short retail category names. Return only a comma-separated list. No explanation.`;
+    }
+
+    productAttributes(productName, description = '') {
+        const descHint = description ? `\nDescription: "${description.substring(0, 500)}"` : '';
+        return `Extract 3-8 visible WooCommerce product attributes for "${productName}".${descHint}
+Write in ${this.language}.
+Return only one attribute per line as Name: Value. Example:
+Material: Cotton
+Color: Navy
+Do not invent technical specs that are not implied by the name or description.`;
+    }
+
     descriptionPostTitle(postTitle) {
         return `Write an engaging blog post introduction for: "${postTitle}".
 Write in ${this.language}. Tone: ${this.tone}.

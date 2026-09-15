@@ -1,16 +1,27 @@
 export async function callWpApi(path = '', method = 'GET', body = null, options = {}) {
   const url = `${wacdmgAdmin.apiBaseUrl}${path}`;
   const signal = options && options.signal ? options.signal : undefined;
+  const headers = {
+    'X-WP-Nonce': wacdmgAdmin.rest_nonce,
+  };
 
-  const res = await fetch(url, {
+  const fetchOptions = {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-WP-Nonce': wacdmgAdmin.rest_nonce,
-    },
-    body: body ? JSON.stringify(body) : null,
-    signal,
-  });
+    headers,
+    credentials: 'same-origin',
+    cache: 'no-store',
+  };
+
+  if (signal) {
+    fetchOptions.signal = signal;
+  }
+
+  if (body !== null && body !== undefined && method !== 'GET') {
+    headers['Content-Type'] = 'application/json';
+    fetchOptions.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(url, fetchOptions);
 
   let data = null;
   try {

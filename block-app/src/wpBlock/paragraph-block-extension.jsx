@@ -13,6 +13,7 @@ import {
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
+import { createGenerationSession, isAbortError } from '../utils/generationRequest';
 import PostPromptGenerator from '../utils/PromptGenerator';
 
 const TONE_OPTIONS = [
@@ -88,7 +89,7 @@ function addCustomInspectorControls(BlockEdit) {
         const [notice, setNotice] = useState({ text: '', status: '' });
         const [templates, setTemplates] = useState([]);
         const [selectedTemplate, setSelectedTemplate] = useState('');
-        const abortRef = useRef(null);
+        const genSession = useRef(createGenerationSession()).current;
 
         useEffect(() => {
             if (name !== 'core/paragraph') {
@@ -150,10 +151,7 @@ function addCustomInspectorControls(BlockEdit) {
                 ? `${prompt} Please ensure the response is no more than ${wordCount} words.`
                 : prompt;
 
-            if (abortRef.current) {
-                abortRef.current.abort();
-            }
-            abortRef.current = new AbortController();
+            const signal = genSession.start();
 
             try {
                 const response = await callWpApi('/generate-paragraph-content', 'POST', {
@@ -161,7 +159,7 @@ function addCustomInspectorControls(BlockEdit) {
                     method: generationType,
                     tone,
                     language,
-                }, { signal: abortRef.current.signal });
+                }, { signal });
 
                 if (response.success) {
                     setAttributes({
@@ -173,12 +171,14 @@ function addCustomInspectorControls(BlockEdit) {
                     setNotice({ text: response.data?.message || __('Error generating content.', 'wacdmg-ai-content-assistant'), status: 'error' });
                 }
             } catch (error) {
-                if (error.name !== 'AbortError') {
+                if (!isAbortError(error)) {
                     setNotice({ text: error.message || __('Network error. Please check your connection.', 'wacdmg-ai-content-assistant'), status: 'error' });
                 }
+            } finally {
+                if (genSession.settle(signal)) {
+                    setGenerating(false);
+                }
             }
-
-            setGenerating(false);
         };
 
         const handleReusePrevious = () => {
@@ -290,7 +290,7 @@ function addCustomInspectorControls(BlockEdit) {
                                     variant="secondary"
                                     isSmall
                                     onClick={() => {
-                                        abortRef.current?.abort();
+                                        genSession.cancel();
                                         setGenerating(false);
                                     }}
                                 >
