@@ -57,6 +57,7 @@ class WACDMG_Admin_API {
         $this->wacdmg_register_route( '/apply-product-content', array( $this, 'wacdmg_apply_product_content' ), 'POST', $can_generate );
         $this->wacdmg_register_route( '/generate-seo-meta', array( $this, 'wacdmg_generate_seo_meta' ), 'POST', $can_generate );
         $this->wacdmg_register_route( '/generate-alt-text', array( $this, 'wacdmg_generate_alt_text' ), 'POST', $can_generate );
+        $this->wacdmg_register_route( '/apply-translation', array( $this, 'wacdmg_apply_translation' ), 'POST', $can_generate );
         $this->wacdmg_register_route( '/chat', array( $this, 'wacdmg_chat' ), 'POST', $can_generate );
         $this->wacdmg_register_route( '/generate-image', array( $this, 'wacdmg_generate_image' ), 'POST', $can_generate );
         $this->wacdmg_register_route( '/get-templates', array( $this, 'wacdmg_get_templates' ), 'GET', $can_generate );
@@ -228,7 +229,11 @@ class WACDMG_Admin_API {
             'image_size'          => sanitize_text_field( $formData['imageSize'] ?? '1024x1024' ),
             'image_quality'       => sanitize_text_field( $formData['imageQuality'] ?? 'standard' ),
             'image_style'         => sanitize_text_field( $formData['imageStyle'] ?? 'vivid' ),
-            'seo_integration'     => sanitize_text_field( $formData['seoIntegration'] ?? 'auto' ),
+            'seo_integration'     => ( function () use ( $formData ) {
+                $seo = sanitize_key( $formData['seoIntegration'] ?? 'auto' );
+                $allowed = array( 'auto', 'yoast', 'rankmath', 'aioseo', 'seopress', 'generic' );
+                return in_array( $seo, $allowed, true ) ? $seo : 'auto';
+            } )(),
             'auto_seo_on_publish' => ! empty( $formData['autoSeoOnPublish'] ),
             'rate_limit_day'      => intval( $formData['rateLimitDay'] ?? 100 ),
         );
@@ -261,6 +266,9 @@ class WACDMG_Admin_API {
         }
         if ( class_exists( 'AIOSEO\Plugin\AIOSEO' ) ) {
             $seo_plugins[] = 'aioseo';
+        }
+        if ( class_exists( 'WACDMG_SEO' ) ) {
+            $seo_plugins = ( new WACDMG_SEO() )->wacdmg_detect_seo_plugins();
         }
 
         // Mask API keys for security (return only last 4 chars)
@@ -615,10 +623,14 @@ class WACDMG_Admin_API {
         $post_id = intval( $request->get_param( 'post_id' ) );
         $apply   = (bool) $request->get_param( 'apply' );
         $incoming = $request->get_param( 'categories' );
+        $taxonomy = sanitize_key( $request->get_param( 'taxonomy' ) );
+        if ( $taxonomy === '' ) {
+            $taxonomy = 'product_cat';
+        }
 
         if ( $apply && is_array( $incoming ) && $post_id ) {
             $names = array_values( array_filter( array_map( 'sanitize_text_field', $incoming ) ) );
-            $applied = $this->wacdmg_apply_categories_to_product( $post_id, $names );
+            $applied = $this->wacdmg_apply_terms_to_post( $post_id, $names, $taxonomy );
             return new WP_REST_Response( array(
                 'success' => true,
                 'data'    => array_merge( array( 'categories' => $names ), $applied ),
@@ -633,9 +645,9 @@ class WACDMG_Admin_API {
 
         $this->wacdmg_log_usage( 'categories' );
         $names = $this->wacdmg_parse_comma_list( $result['description'] );
-        $applied = array( 'applied' => false, 'term_ids' => array(), 'taxonomy' => 'product_cat' );
+        $applied = array( 'applied' => false, 'term_ids' => array(), 'taxonomy' => $taxonomy );
         if ( $apply && $post_id ) {
-            $applied = $this->wacdmg_apply_categories_to_product( $post_id, $names );
+            $applied = $this->wacdmg_apply_terms_to_post( $post_id, $names, $taxonomy );
         }
 
         return new WP_REST_Response( array(
@@ -648,33 +660,37 @@ class WACDMG_Admin_API {
     }
 
     /**
-     * Append product categories, matching existing terms when possible.
+     * Append taxonomy terms, matching existing terms when possible.
      *
-     * @param int   $post_id Post ID.
-     * @param array $names   Category names.
+     * @param int    $post_id  Post ID.
+     * @param array  $names    Term names.
+     * @param string $taxonomy Taxonomy slug.
      * @return array
      */
-    private function wacdmg_apply_categories_to_product( $post_id, $names ) {
+    private function wacdmg_apply_terms_to_post( $post_id, $names, $taxonomy = 'product_cat' ) {
+        $taxonomy = sanitize_key( $taxonomy );
         $empty = array(
             'applied'  => false,
             'term_ids' => array(),
-            'taxonomy' => 'product_cat',
+            'taxonomy' => $taxonomy,
         );
-        if ( ! $post_id || empty( $names ) || ! current_user_can( 'edit_post', $post_id ) || ! taxonomy_exists( 'product_cat' ) ) {
+        if ( ! $post_id || empty( $names ) || ! current_user_can( 'edit_post', $post_id ) || ! taxonomy_exists( $taxonomy ) ) {
             return $empty;
         }
-        if ( get_post_type( $post_id ) !== 'product' ) {
+
+        $object_taxes = get_object_taxonomies( get_post_type( $post_id ) );
+        if ( ! in_array( $taxonomy, $object_taxes, true ) ) {
             return $empty;
         }
 
         $term_ids = array();
         foreach ( $names as $name ) {
-            $existing = get_term_by( 'name', $name, 'product_cat' );
+            $existing = get_term_by( 'name', $name, $taxonomy );
             if ( $existing && ! is_wp_error( $existing ) ) {
                 $term_ids[] = (int) $existing->term_id;
                 continue;
             }
-            $inserted = wp_insert_term( $name, 'product_cat' );
+            $inserted = wp_insert_term( $name, $taxonomy );
             if ( ! is_wp_error( $inserted ) && ! empty( $inserted['term_id'] ) ) {
                 $term_ids[] = (int) $inserted['term_id'];
             }
@@ -683,16 +699,27 @@ class WACDMG_Admin_API {
         if ( empty( $term_ids ) ) {
             return $empty;
         }
-        wp_set_object_terms( $post_id, $term_ids, 'product_cat', true );
-        $all = wp_get_object_terms( $post_id, 'product_cat', array( 'fields' => 'ids' ) );
+        wp_set_object_terms( $post_id, $term_ids, $taxonomy, true );
+        $all = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'ids' ) );
         if ( is_wp_error( $all ) ) {
             $all = $term_ids;
         }
         return array(
             'applied'  => true,
             'term_ids' => array_map( 'intval', $all ),
-            'taxonomy' => 'product_cat',
+            'taxonomy' => $taxonomy,
         );
+    }
+
+    /**
+     * Append product categories, matching existing terms when possible.
+     *
+     * @param int   $post_id Post ID.
+     * @param array $names   Category names.
+     * @return array
+     */
+    private function wacdmg_apply_categories_to_product( $post_id, $names ) {
+        return $this->wacdmg_apply_terms_to_post( $post_id, $names, 'product_cat' );
     }
 
     /**
@@ -898,14 +925,27 @@ class WACDMG_Admin_API {
             $gaps[] = 'image';
         }
 
+        $empty_gallery_alts = array();
+        $gallery = get_post_meta( $post_id, '_product_image_gallery', true );
+        if ( is_string( $gallery ) && $gallery !== '' ) {
+            $gallery_ids = array_slice( array_filter( array_map( 'intval', explode( ',', $gallery ) ) ), 0, 10 );
+            foreach ( $gallery_ids as $attachment_id ) {
+                $alt = get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+                if ( $alt === '' ) {
+                    $empty_gallery_alts[] = $attachment_id;
+                }
+            }
+        }
+
         return array(
-            'id'         => $post_id,
-            'title'      => $title,
-            'edit_url'   => get_edit_post_link( $post_id, 'raw' ),
-            'gaps'       => $gaps,
-            'has_title'  => $title !== '',
-            'content'    => $content,
-            'excerpt'    => $excerpt,
+            'id'                  => $post_id,
+            'title'               => $title,
+            'edit_url'            => get_edit_post_link( $post_id, 'raw' ),
+            'gaps'                => $gaps,
+            'has_title'           => $title !== '',
+            'content'             => $content,
+            'excerpt'             => $excerpt,
+            'empty_gallery_alts'  => $empty_gallery_alts,
         );
     }
 
@@ -955,6 +995,11 @@ class WACDMG_Admin_API {
             $writer->wacdmg_write_seo_meta( $post_id, $seo );
         }
 
+        $purchase_note = $request->get_param( 'purchase_note' );
+        if ( is_string( $purchase_note ) && $purchase_note !== '' ) {
+            update_post_meta( $post_id, '_purchase_note', sanitize_textarea_field( $purchase_note ) );
+        }
+
         return new WP_REST_Response( array(
             'success' => true,
             'data'    => $this->wacdmg_get_product_content_status( $post_id ),
@@ -972,6 +1017,8 @@ class WACDMG_Admin_API {
         $desc_prompt  = $request->get_param( 'desc_prompt' );
         $kw_prompt    = $request->get_param( 'kw_prompt' );
         $post_id      = intval( $request->get_param( 'post_id' ) );
+        $term_id      = intval( $request->get_param( 'term_id' ) );
+        $taxonomy     = sanitize_key( $request->get_param( 'taxonomy' ) ?: '' );
 
         $rate_error = $this->wacdmg_get_rate_limit_error();
         if ( $rate_error ) {
@@ -1005,10 +1052,12 @@ class WACDMG_Admin_API {
             $any_success = $any_success || $r['success'];
         }
 
-        // Write to SEO plugins if post_id provided
-        if ( $post_id && $any_success && current_user_can( 'edit_post', $post_id ) ) {
-            if ( class_exists( 'WACDMG_SEO' ) ) {
-                $seo = new WACDMG_SEO();
+        // Write to SEO plugins if post_id or term_id provided.
+        if ( $any_success && class_exists( 'WACDMG_SEO' ) ) {
+            $seo = new WACDMG_SEO();
+            if ( $term_id && current_user_can( 'edit_term', $term_id ) ) {
+                $seo->wacdmg_write_term_seo_meta( $term_id, $results, $taxonomy );
+            } elseif ( $post_id && current_user_can( 'edit_post', $post_id ) ) {
                 $seo->wacdmg_write_seo_meta( $post_id, $results );
             }
         }
@@ -1032,6 +1081,8 @@ class WACDMG_Admin_API {
     public function wacdmg_generate_alt_text( WP_REST_Request $request ) {
         $prompt        = $request->get_param( 'prompt' );
         $attachment_id = intval( $request->get_param( 'attachment_id' ) );
+        $target        = sanitize_key( $request->get_param( 'target' ) ?: 'alt' );
+        $skip_if_filled = (bool) $request->get_param( 'skip_if_filled' );
 
         if ( $attachment_id && ! current_user_can( 'edit_post', $attachment_id ) ) {
             return new WP_REST_Response( array(
@@ -1040,23 +1091,128 @@ class WACDMG_Admin_API {
             ), 403 );
         }
 
+        if ( $target === 'caption' && $attachment_id && $skip_if_filled ) {
+            $attachment = get_post( $attachment_id );
+            if ( $attachment && trim( (string) $attachment->post_excerpt ) !== '' ) {
+                return new WP_REST_Response( array(
+                    'success' => true,
+                    'data'    => array( 'caption' => $attachment->post_excerpt, 'skipped' => true ),
+                ), 200 );
+            }
+        }
+
+        if ( $target !== 'caption' && $attachment_id && $skip_if_filled ) {
+            $existing_alt = get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+            if ( $existing_alt !== '' ) {
+                return new WP_REST_Response( array(
+                    'success' => true,
+                    'data'    => array( 'alt_text' => $existing_alt, 'skipped' => true ),
+                ), 200 );
+            }
+        }
+
         $result = $this->wacdmg_run_ai_prompt( $prompt );
 
         if ( $result['success'] ) {
             $this->wacdmg_log_usage( 'alt_text' );
-            $alt = wp_strip_all_tags( $result['description'] );
+            $text = wp_strip_all_tags( $result['description'] );
+
+            if ( $target === 'caption' ) {
+                if ( $attachment_id ) {
+                    wp_update_post( array(
+                        'ID'           => $attachment_id,
+                        'post_excerpt' => sanitize_textarea_field( $text ),
+                    ) );
+                }
+                return new WP_REST_Response( array(
+                    'success' => true,
+                    'data'    => array( 'caption' => $text ),
+                ), 200 );
+            }
 
             if ( $attachment_id ) {
-                update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
+                update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $text ) );
             }
 
             return new WP_REST_Response( array(
                 'success' => true,
-                'data'    => array( 'alt_text' => $alt ),
+                'data'    => array( 'alt_text' => $text ),
             ), 200 );
         }
 
         return $this->wacdmg_error_rest_response( $result );
+    }
+
+    /**
+     * Copy generated fields onto an existing WPML/Polylang translation.
+     *
+     * @param WP_REST_Request $request Request.
+     * @return WP_REST_Response
+     */
+    public function wacdmg_apply_translation( WP_REST_Request $request ) {
+        $post_id = intval( $request->get_param( 'post_id' ) );
+        $lang    = sanitize_text_field( $request->get_param( 'lang' ) );
+        if ( ! $post_id || ! $lang || ! current_user_can( 'edit_post', $post_id ) ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => 'Invalid post or language.' ),
+            ), 403 );
+        }
+
+        $translated_id = 0;
+        $post_type     = get_post_type( $post_id );
+        if ( has_filter( 'wpml_object_id' ) ) {
+            $translated_id = intval( apply_filters( 'wpml_object_id', $post_id, $post_type, false, $lang ) );
+        }
+        if ( ! $translated_id && function_exists( 'pll_get_post' ) ) {
+            $translated_id = intval( pll_get_post( $post_id, $lang ) );
+        }
+
+        if ( ! $translated_id || $translated_id === $post_id ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => 'No translation exists for that language. Create the translation first.' ),
+            ), 404 );
+        }
+        if ( ! current_user_can( 'edit_post', $translated_id ) ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => 'You cannot edit the translated post.' ),
+            ), 403 );
+        }
+
+        $update = array( 'ID' => $translated_id );
+        $title = $request->get_param( 'title' );
+        $content = $request->get_param( 'content' );
+        $excerpt = $request->get_param( 'excerpt' );
+        if ( is_string( $title ) && $title !== '' ) {
+            $update['post_title'] = sanitize_text_field( $title );
+        }
+        if ( is_string( $content ) && $content !== '' ) {
+            $update['post_content'] = wp_kses_post( $content );
+        }
+        if ( is_string( $excerpt ) && $excerpt !== '' ) {
+            $update['post_excerpt'] = wp_kses_post( $excerpt );
+        }
+        if ( count( $update ) === 1 ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => 'No fields provided.' ),
+            ), 400 );
+        }
+
+        $result = wp_update_post( $update, true );
+        if ( is_wp_error( $result ) ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => $result->get_error_message() ),
+            ), 500 );
+        }
+
+        return new WP_REST_Response( array(
+            'success' => true,
+            'data'    => array( 'translated_id' => $translated_id ),
+        ), 200 );
     }
 
     /**

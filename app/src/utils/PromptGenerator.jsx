@@ -120,6 +120,85 @@ Write in ${this.language}. Tone: ${this.tone}.
 Keep facts, improve clarity and SEO. Return only the improved description as HTML.`;
     }
 
+    improvePostTitle(postTitle) {
+        return `Improve this WordPress title: "${postTitle}"
+Write in ${this.language}. Tone: ${this.tone}.
+Make it clear, SEO-friendly, and under 70 characters.
+Return only the improved title as plain text — no quotes, no explanation.`;
+    }
+
+    postExcerpt(postTitle, content = '') {
+        const contentHint = content ? `\nContent preview: "${content.substring(0, 400)}"` : '';
+        return `Write a short excerpt (2-3 sentences, max 80 words) for: "${postTitle}".${contentHint}
+Write in ${this.language}. Tone: ${this.tone}.
+Return only the excerpt as plain text.`;
+    }
+
+    postTags(postTitle, content = '') {
+        const contentHint = content ? `\nContent: "${content.substring(0, 500)}"` : '';
+        return `Generate 5-10 relevant tags for a WordPress post titled "${postTitle}".${contentHint}
+Write in ${this.language}.
+Return only a comma-separated list of tags. No numbers, no explanation.`;
+    }
+
+    postCategories(postTitle, content = '') {
+        const contentHint = content ? `\nContent: "${content.substring(0, 500)}"` : '';
+        return `Suggest 1-3 WordPress categories for a post titled "${postTitle}".${contentHint}
+Write in ${this.language}.
+Use short category names. Return only a comma-separated list. No explanation.`;
+    }
+
+    productBrands(productName, description = '') {
+        const descHint = description ? `\nDescription: "${description.substring(0, 500)}"` : '';
+        return `Suggest 1-3 product brand names for "${productName}".${descHint}
+Write in ${this.language}.
+Use real brand names implied by the product. Return only a comma-separated list. No explanation.`;
+    }
+
+    variationDescription(productName, attributes = '', current = '') {
+        const attrHint = attributes ? ` Variation attributes: ${attributes}.` : '';
+        const currentHint = current ? `\nCurrent description: "${current.substring(0, 300)}"` : '';
+        return `Write a short WooCommerce variation description for "${productName}".${attrHint}${currentHint}
+Write in ${this.language}. Tone: ${this.tone}.
+2-4 sentences. Do not invent specs that are not implied. Return only the description as plain text.`;
+    }
+
+    fieldGenerate(fieldLabel, contextTitle = '') {
+        const ctx = contextTitle ? ` The content is for: "${contextTitle}".` : '';
+        return `Write content for the "${fieldLabel}" field.${ctx}
+Write in ${this.language}. Tone: ${this.tone}.
+Return only the field value. No labels or explanation.`;
+    }
+
+    fieldImprove(fieldLabel, current, contextTitle = '') {
+        const ctx = contextTitle ? ` Context: "${contextTitle}".` : '';
+        return `Improve this "${fieldLabel}" field value.${ctx}
+
+"${current}"
+
+Write in ${this.language}. Tone: ${this.tone}.
+Keep facts. Return only the improved value.`;
+    }
+
+    imageCaption(imageTitle = '', alt = '') {
+        const hints = [imageTitle ? `Title: "${imageTitle}"` : '', alt ? `Alt text: "${alt}"` : ''].filter(Boolean).join('. ');
+        return `Write a concise image caption.${hints ? ` ${hints}.` : ''}
+Write in ${this.language}.
+One or two sentences. Return only the caption as plain text.`;
+    }
+
+    purchaseNote(productName) {
+        return `Write a short WooCommerce purchase note shown after checkout for: "${productName}".
+Write in ${this.language}. Tone: helpful.
+1-2 sentences. No marketing fluff. Return only the note as plain text.`;
+    }
+
+    productTabBody(productName, tabTitle) {
+        return `Write HTML content for a WooCommerce product tab titled "${tabTitle}" for product "${productName}".
+Write in ${this.language}. Tone: ${this.tone}.
+Helpful, factual, 1-3 short paragraphs. Return only the tab HTML.`;
+    }
+
     // =========================================================================
     // SEO Meta Prompts
     // =========================================================================

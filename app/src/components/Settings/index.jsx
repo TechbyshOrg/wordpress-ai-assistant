@@ -447,7 +447,7 @@ const Settings = () => {
                             ) : (
                                 seoPlugins.map(p => (
                                     <span key={p} className="wacdmg-badge wacdmg-badge-green">
-                                        {p === 'yoast' ? 'Yoast SEO' : p === 'rankmath' ? 'Rank Math' : 'AIOSEO'}
+                                        {p === 'yoast' ? 'Yoast SEO' : p === 'rankmath' ? 'Rank Math' : p === 'aioseo' ? 'AIOSEO' : p === 'seopress' ? 'SEOPress' : p}
                                     </span>
                                 ))
                             )}
@@ -460,6 +460,7 @@ const Settings = () => {
                                 <option value="yoast">Yoast SEO</option>
                                 <option value="rankmath">Rank Math</option>
                                 <option value="aioseo">AIOSEO</option>
+                                <option value="seopress">SEOPress</option>
                                 <option value="generic">Generic post meta</option>
                             </select>
                         </div>

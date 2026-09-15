@@ -13,6 +13,7 @@ function addImageAltControls(BlockEdit) {
     return function ImageAltControls(props) {
         const { attributes, setAttributes, name } = props;
         const [generating, setGenerating] = useState(false);
+        const [captionLoading, setCaptionLoading] = useState(false);
         const [notice, setNotice] = useState({ text: '', status: '' });
         const genSession = useRef(createGenerationSession()).current;
 
@@ -92,6 +93,49 @@ function addImageAltControls(BlockEdit) {
                                 </Notice>
                             </div>
                         )}
+                        <Button
+                            variant="secondary"
+                            onClick={async () => {
+                                const signal = genSession.start();
+                                setCaptionLoading(true);
+                                setNotice({ text: '', status: '' });
+                                const prompt = `Write a concise image caption.`
+                                    + (alt ? ` Alt text: "${alt}".` : '')
+                                    + (url ? ` Image URL: ${url}.` : '')
+                                    + ` One or two sentences. Return only the caption as plain text.`;
+                                try {
+                                    const response = await callWpApi('/generate-alt-text', 'POST', {
+                                        prompt,
+                                        attachment_id: id || 0,
+                                        target: 'caption',
+                                    }, { signal });
+                                    if (response.success && response.data?.caption) {
+                                        setAttributes({ caption: response.data.caption });
+                                        setNotice({ text: __('Caption generated.', 'wacdmg-ai-content-assistant'), status: 'success' });
+                                    } else {
+                                        setNotice({
+                                            text: response.data?.message || __('Failed to generate caption.', 'wacdmg-ai-content-assistant'),
+                                            status: 'error',
+                                        });
+                                    }
+                                } catch (error) {
+                                    if (!isAbortError(error)) {
+                                        setNotice({ text: error.message || __('Network error.', 'wacdmg-ai-content-assistant'), status: 'error' });
+                                    }
+                                } finally {
+                                    if (genSession.settle(signal)) {
+                                        setCaptionLoading(false);
+                                    }
+                                }
+                            }}
+                            isBusy={captionLoading}
+                            disabled={generating || captionLoading}
+                            style={{ marginTop: '8px' }}
+                        >
+                            {captionLoading
+                                ? __('Generating...', 'wacdmg-ai-content-assistant')
+                                : __('Generate Caption', 'wacdmg-ai-content-assistant')}
+                        </Button>
                     </PanelBody>
                 </InspectorControls>
                 <BlockEdit {...props} />

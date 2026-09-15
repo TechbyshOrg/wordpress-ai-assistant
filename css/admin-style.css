@@ -3,3 +3,18 @@
  * Note: Component-specific styles are bundled directly into the JS files via Webpack (style-loader).
  * This stylesheet is enqueued as a placeholder and can be used for general WordPress admin layout fixes.
  */
+
+.wacdmg-field-ai-row {
+    margin: 8px 0;
+}
+
+.wacdmg-field-ai-row .wacdmg-field-ai {
+    margin-right: 4px;
+    margin-bottom: 4px;
+}
+
+.wacdmg-field-ai-status {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 12px;
+}

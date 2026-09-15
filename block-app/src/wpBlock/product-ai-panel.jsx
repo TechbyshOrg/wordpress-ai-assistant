@@ -66,7 +66,10 @@ const ProductAiPanel = () => {
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState('');
     const [gaps, setGaps] = useState([]);
+    const [emptyGalleryAlts, setEmptyGalleryAlts] = useState([]);
     const genSession = useRef(createGenerationSession()).current;
+    const hasBrands = !!window.wacdmgAdmin?.hasBrands;
+    const translationLangs = Array.isArray(window.wacdmgAdmin?.translationLangs) ? window.wacdmgAdmin.translationLangs : [];
 
     const postType = useSelect(select => select('core/editor').getCurrentPostType());
     const postId = useSelect(select => select('core/editor').getCurrentPostId());
@@ -93,6 +96,9 @@ const ProductAiPanel = () => {
             .then(res => {
                 if (res.success && Array.isArray(res.data.gaps)) {
                     setGaps(res.data.gaps);
+                }
+                if (res.success && Array.isArray(res.data.empty_gallery_alts)) {
+                    setEmptyGalleryAlts(res.data.empty_gallery_alts);
                 }
             })
             .catch(() => {});
@@ -305,6 +311,81 @@ const ProductAiPanel = () => {
             >
                 {__('Extract Attributes', 'wacdmg-ai-content-assistant')}
             </Button>
+            {hasBrands && (
+                <Button
+                    variant="secondary"
+                    disabled={loading}
+                    onClick={() => run(async (signal) => {
+                        const response = await callWpApi('/generate-categories', 'POST', {
+                            prompt: generator.productBrands(title, contentText),
+                            post_id: postId,
+                            apply: true,
+                            taxonomy: 'product_brand',
+                        }, { signal });
+                        if (!response.success) {
+                            throw new Error(response.data?.message || __('Failed.', 'wacdmg-ai-content-assistant'));
+                        }
+                        if (response.data.term_ids?.length) {
+                            editPost({ product_brand: response.data.term_ids });
+                        }
+                        setNotice({
+                            text: __('Brands applied: ', 'wacdmg-ai-content-assistant') + (response.data.categories || []).join(', '),
+                            status: 'success',
+                        });
+                    })}
+                    style={btnStyle}
+                >
+                    {__('Suggest Brands', 'wacdmg-ai-content-assistant')}
+                </Button>
+            )}
+            <Button
+                variant="secondary"
+                disabled={loading}
+                onClick={() => run(async (signal) => {
+                    const response = await callWpApi('/generate-description', 'POST', {
+                        prompt: generator.purchaseNote(title),
+                    }, { signal });
+                    if (!response.success) {
+                        throw new Error(response.data?.message || __('Failed.', 'wacdmg-ai-content-assistant'));
+                    }
+                    const note = stripHtml(response.data.description || '');
+                    await callWpApi('/apply-product-content', 'POST', {
+                        post_id: postId,
+                        purchase_note: note,
+                    }, { signal });
+                    setNotice({ text: __('Purchase note saved.', 'wacdmg-ai-content-assistant'), status: 'success' });
+                })}
+                style={btnStyle}
+            >
+                {__('Generate Purchase Note', 'wacdmg-ai-content-assistant')}
+            </Button>
+            {emptyGalleryAlts.length > 0 && (
+                <Button
+                    variant="secondary"
+                    disabled={loading}
+                    onClick={() => run(async (signal) => {
+                        let filled = 0;
+                        for (const attachmentId of emptyGalleryAlts.slice(0, 10)) {
+                            const response = await callWpApi('/generate-alt-text', 'POST', {
+                                prompt: 'Write concise, descriptive alt text for this WordPress product gallery image. Under 125 characters. Return only the alt text as plain text.',
+                                attachment_id: attachmentId,
+                                skip_if_filled: true,
+                            }, { signal });
+                            if (response.success && !response.data?.skipped) {
+                                filled += 1;
+                            }
+                        }
+                        setEmptyGalleryAlts([]);
+                        setNotice({
+                            text: __('Gallery alt text updated: ', 'wacdmg-ai-content-assistant') + filled,
+                            status: 'success',
+                        });
+                    })}
+                    style={btnStyle}
+                >
+                    {__('Fill empty gallery alts', 'wacdmg-ai-content-assistant')}
+                </Button>
+            )}
             <Button
                 variant="secondary"
                 disabled={loading}
@@ -358,6 +439,29 @@ const ProductAiPanel = () => {
             >
                 {__('Summarize to Short Description', 'wacdmg-ai-content-assistant')}
             </Button>
+            {translationLangs.length > 0 && (
+                <Button
+                    variant="secondary"
+                    disabled={loading}
+                    onClick={() => run(async (signal) => {
+                        const lang = translationLangs[0].code;
+                        const response = await callWpApi('/apply-translation', 'POST', {
+                            post_id: postId,
+                            lang,
+                            title,
+                            content,
+                            excerpt,
+                        }, { signal });
+                        if (!response.success) {
+                            throw new Error(response.data?.message || __('No translation exists.', 'wacdmg-ai-content-assistant'));
+                        }
+                        setNotice({ text: __('Saved to the existing translation.', 'wacdmg-ai-content-assistant'), status: 'success' });
+                    })}
+                    style={btnStyle}
+                >
+                    {__('Save to translation', 'wacdmg-ai-content-assistant')}
+                </Button>
+            )}
             {loading && (
                 <Button
                     variant="tertiary"

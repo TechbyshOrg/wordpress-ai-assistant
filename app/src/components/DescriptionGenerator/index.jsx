@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { callWpApi } from '../../utils/callWpApi';
 import { createGenerationSession, isAbortError } from '../../utils/generationRequest';
-import { readWpEditorContent, writeWpEditorContent, writePostTitle, writeProductTags, writeProductCategories, writeProductAttributes } from '../../utils/wpEditor';
+import { readWpEditorContent, writeWpEditorContent, writePostTitle, writeProductAttributes, writeTaxonomyTags, writeTaxonomyChecklist } from '../../utils/wpEditor';
 import './style.css';
 import ProductPromptGenerator from '../../utils/PromptGenerator';
 import { toneOptions, languageOptions } from '../../utils/variables';
@@ -25,7 +25,15 @@ const DescriptionGenerator = () => {
     const [generatedTags, setGeneratedTags] = useState([]);
     const [generatedCategories, setGeneratedCategories] = useState([]);
     const [generatedAttributes, setGeneratedAttributes] = useState([]);
+    const [generatedBrands, setGeneratedBrands] = useState([]);
     const [contentGaps, setContentGaps] = useState([]);
+    const [translationLang, setTranslationLang] = useState('');
+
+    const adminCfg = window.wacdmgAdmin || {};
+    const isProduct = adminCfg.isProduct === true || adminCfg.postType === 'product' || adminCfg.currentPage === 'product-editor';
+    const hasBrands = !!adminCfg.hasBrands;
+    const translationLangs = Array.isArray(adminCfg.translationLangs) ? adminCfg.translationLangs : [];
+    const hasTranslation = translationLangs.length > 0;
 
     const [generatedDescription, setGeneratedDescription] = useState('');
     const [generationMethod, setGenerationMethod] = useState(null);
@@ -57,7 +65,7 @@ const DescriptionGenerator = () => {
             })
             .catch(() => {});
         const postId = getPostId();
-        if (postId) {
+        if (postId && isProduct) {
             callWpApi('/product-content-status?post_id=' + postId, 'GET')
                 .then(res => {
                     if (res.success && Array.isArray(res.data.gaps)) {
@@ -101,6 +109,7 @@ const DescriptionGenerator = () => {
         setGeneratedTags([]);
         setGeneratedCategories([]);
         setGeneratedAttributes([]);
+        setGeneratedBrands([]);
     };
 
     const finishIfCurrent = (signal) => {
@@ -155,7 +164,10 @@ const DescriptionGenerator = () => {
         if (!productName) { alert('Please enter a product name first.'); return; }
         const generator = new ProductPromptGenerator({ tone, language });
         setInsertButtonText('Insert Into Description');
-        submitPrompt('name', generator.productNameDescription(productName), 'Generating description...');
+        const prompt = isProduct
+            ? generator.productNameDescription(productName)
+            : generator.descriptionPostTitle(productName);
+        submitPrompt('name', prompt, 'Generating description...');
     };
 
     const improveCurrentDescription = () => {
@@ -173,7 +185,7 @@ const DescriptionGenerator = () => {
         if (!productName) { alert('Please enter a product title first.'); return; }
         const generator = new ProductPromptGenerator({ tone, language });
         setInsertButtonText('Insert to Title');
-        submitPrompt('title', generator.improveTitle(productName), 'Improving title...');
+        submitPrompt('title', isProduct ? generator.improveTitle(productName) : generator.improvePostTitle(productName), 'Improving title...');
     };
 
     const generateShortDescription = async () => {
@@ -215,7 +227,9 @@ const DescriptionGenerator = () => {
         const signal = genSession.start();
         try {
             const response = await callWpApi('/generate-tags', 'POST', {
-                prompt: generator.productTags(productName, currentDesc),
+                prompt: isProduct
+                    ? generator.productTags(productName, currentDesc)
+                    : generator.postTags(productName, currentDesc),
                 tone,
                 language,
                 post_id: getPostId(),
@@ -278,8 +292,11 @@ const DescriptionGenerator = () => {
         const signal = genSession.start();
         try {
             const response = await callWpApi('/generate-categories', 'POST', {
-                prompt: generator.productCategories(productName, getCurrentDescription()),
+                prompt: isProduct
+                    ? generator.productCategories(productName, getCurrentDescription())
+                    : generator.postCategories(productName, getCurrentDescription()),
                 post_id: getPostId(),
+                taxonomy: isProduct ? 'product_cat' : 'category',
             }, { signal });
             if (response.success) {
                 const cats = response.data.categories || [];
@@ -327,6 +344,153 @@ const DescriptionGenerator = () => {
         } finally {
             finishIfCurrent(signal);
         }
+    };
+
+    const generateBrands = async () => {
+        const productName = getProductName();
+        if (!productName) { alert('Please enter a product name first.'); return; }
+        setLoading(true);
+        setLoadingAction('Suggesting brands...');
+        const generator = new ProductPromptGenerator({ tone, language });
+        const signal = genSession.start();
+        try {
+            const response = await callWpApi('/generate-categories', 'POST', {
+                prompt: generator.productBrands(productName, getCurrentDescription()),
+                post_id: getPostId(),
+                taxonomy: 'product_brand',
+            }, { signal });
+            if (response.success) {
+                const brands = response.data.categories || [];
+                setGeneratedBrands(brands);
+                setGeneratedDescription('Brands: ' + brands.join(', '));
+                setGenerationMethod('brands');
+                setInsertButtonText('Insert Brands');
+            } else {
+                alert('Failed: ' + (response.data?.message || 'Unknown error'));
+            }
+        } catch (error) {
+            if (!isAbortError(error)) {
+                alert('Error: ' + (error.message || 'Error generating brands.'));
+            }
+        } finally {
+            finishIfCurrent(signal);
+        }
+    };
+
+    const generateExcerpt = async () => {
+        const productName = getProductName();
+        if (!productName) { alert('Please enter a title first.'); return; }
+        setLoading(true);
+        setLoadingAction('Generating excerpt...');
+        const generator = new ProductPromptGenerator({ tone, language });
+        const signal = genSession.start();
+        try {
+            const response = await callWpApi('/generate-short-description', 'POST', {
+                prompt: generator.postExcerpt(productName, getCurrentDescription()),
+                tone,
+                language,
+            }, { signal });
+            if (response.success) {
+                setGeneratedDescription(response.data.short_description);
+                setGenerationMethod('short_description');
+                setInsertButtonText('Insert Excerpt');
+            } else {
+                alert('Failed: ' + (response.data?.message || 'Unknown error'));
+            }
+        } catch (error) {
+            if (!isAbortError(error)) {
+                alert('Error: ' + (error.message || 'Error generating excerpt.'));
+            }
+        } finally {
+            finishIfCurrent(signal);
+        }
+    };
+
+    const generatePurchaseNote = () => {
+        const productName = getProductName();
+        if (!productName) { alert('Please enter a product name first.'); return; }
+        const generator = new ProductPromptGenerator({ tone, language });
+        setInsertButtonText('Insert Purchase Note');
+        submitPrompt('purchase_note', generator.purchaseNote(productName), 'Generating purchase note...');
+    };
+
+    const fillGalleryAlts = async () => {
+        const input = document.getElementById('product_image_gallery');
+        const ids = (input ? input.value : '')
+            .split(',')
+            .map((id) => parseInt(id, 10))
+            .filter((id) => id > 0)
+            .slice(0, 10);
+        if (!ids.length) {
+            alert('Add gallery images first.');
+            return;
+        }
+        setLoading(true);
+        setLoadingAction('Filling empty gallery alt text...');
+        const signal = genSession.start();
+        let filled = 0;
+        try {
+            for (const attachmentId of ids) {
+                const response = await callWpApi('/generate-alt-text', 'POST', {
+                    prompt: 'Write concise, descriptive alt text for this WordPress product gallery image. Under 125 characters. Return only the alt text as plain text.',
+                    attachment_id: attachmentId,
+                    skip_if_filled: true,
+                }, { signal });
+                if (response.success && !response.data?.skipped) {
+                    filled += 1;
+                }
+            }
+            alert(filled ? ('Generated alt text for ' + filled + ' gallery image(s).') : 'Gallery images already have alt text.');
+        } catch (error) {
+            if (!isAbortError(error)) {
+                alert('Error: ' + (error.message || 'Could not fill gallery alts.'));
+            }
+        } finally {
+            finishIfCurrent(signal);
+        }
+    };
+
+    const saveToTranslation = async () => {
+        const lang = translationLang || (translationLangs[0] && translationLangs[0].code);
+        const postId = getPostId();
+        if (!lang || !postId) {
+            alert('Select a translation language first.');
+            return;
+        }
+        setLoading(true);
+        setLoadingAction('Saving to translation...');
+        const signal = genSession.start();
+        try {
+            const response = await callWpApi('/apply-translation', 'POST', {
+                post_id: postId,
+                lang,
+                title: getProductName(),
+                content: generatedDescription || readWpEditorContent('content', 'html'),
+                excerpt: readWpEditorContent('excerpt', 'html'),
+            }, { signal });
+            if (response.success) {
+                alert('Saved to the existing translation.');
+            } else {
+                alert('Failed: ' + (response.data?.message || 'No translation exists.'));
+            }
+        } catch (error) {
+            if (!isAbortError(error)) {
+                alert('Error: ' + (error.message || 'Could not save translation.'));
+            }
+        } finally {
+            finishIfCurrent(signal);
+        }
+    };
+
+    const writePurchaseNoteField = (content) => {
+        const el = document.getElementById('_purchase_note') || document.querySelector('textarea[name="_purchase_note"]');
+        if (!el) {
+            return false;
+        }
+        el.value = content == null ? '' : String(content);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
     };
 
     const translateDescription = () => {
@@ -407,6 +571,10 @@ const DescriptionGenerator = () => {
             insertCategories();
         } else if (generationMethod === 'attributes') {
             insertAttributes();
+        } else if (generationMethod === 'brands') {
+            insertBrands();
+        } else if (generationMethod === 'purchase_note') {
+            insertPurchaseNote();
         } else {
             insertToProductDescription(generatedDescription);
         }
@@ -418,7 +586,7 @@ const DescriptionGenerator = () => {
             : generatedDescription.replace(/^Tags:\s*/i, '').split(',').map(t => t.trim()).filter(Boolean);
         if (!tags.length) return;
 
-        writeProductTags(tags);
+        writeTaxonomyTags(isProduct ? 'product_tag' : 'post_tag', tags);
 
         const postId = getPostId();
         if (postId) {
@@ -452,8 +620,9 @@ const DescriptionGenerator = () => {
                     categories: cats,
                     apply: true,
                     post_id: postId,
+                    taxonomy: isProduct ? 'product_cat' : 'category',
                 });
-                writeProductCategories(response.data?.term_ids || []);
+                writeTaxonomyChecklist(isProduct ? 'product_cat' : 'category', response.data?.term_ids || []);
             } catch (error) {
                 if (!isAbortError(error)) {
                     alert('Error: ' + (error.message || 'Could not save categories.'));
@@ -493,6 +662,55 @@ const DescriptionGenerator = () => {
         }
         setInsertButtonText('Attributes Inserted');
         setTimeout(() => setInsertButtonText('Insert Attributes'), 2000);
+    };
+
+    const insertBrands = async () => {
+        const brands = generatedBrands.length
+            ? generatedBrands
+            : generatedDescription.replace(/^Brands:\s*/i, '').split(',').map((t) => t.trim()).filter(Boolean);
+        if (!brands.length) return;
+        const postId = getPostId();
+        if (postId) {
+            try {
+                const response = await callWpApi('/generate-categories', 'POST', {
+                    categories: brands,
+                    apply: true,
+                    post_id: postId,
+                    taxonomy: 'product_brand',
+                });
+                writeTaxonomyChecklist('product_brand', response.data?.term_ids || []);
+            } catch (error) {
+                if (!isAbortError(error)) {
+                    alert('Error: ' + (error.message || 'Could not save brands.'));
+                    return;
+                }
+            }
+        }
+        setInsertButtonText('Brands Inserted');
+        setTimeout(() => setInsertButtonText('Insert Brands'), 2000);
+    };
+
+    const insertPurchaseNote = async () => {
+        if (!writePurchaseNoteField(generatedDescription)) {
+            alert('Could not find the purchase note field.');
+            return;
+        }
+        const postId = getPostId();
+        if (postId) {
+            try {
+                await callWpApi('/apply-product-content', 'POST', {
+                    post_id: postId,
+                    purchase_note: generatedDescription,
+                });
+            } catch (error) {
+                if (!isAbortError(error)) {
+                    alert('Error: ' + (error.message || 'Could not save purchase note.'));
+                    return;
+                }
+            }
+        }
+        setInsertButtonText('Inserted');
+        setTimeout(() => setInsertButtonText('Insert Purchase Note'), 2000);
     };
 
     const handleUseTemplate = () => {
@@ -675,9 +893,28 @@ const DescriptionGenerator = () => {
                             <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={translateDescription}>
                                 Translate Description
                             </button>
-                            <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={summarizeToShort}>
-                                Summarize to Short Description
-                            </button>
+                            {isProduct && (
+                                <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={summarizeToShort}>
+                                    Summarize to Short Description
+                                </button>
+                            )}
+                            {hasTranslation && (
+                                <>
+                                    <select
+                                        className="wacdmg-control-select"
+                                        value={translationLang}
+                                        onChange={(e) => setTranslationLang(e.target.value)}
+                                    >
+                                        <option value="">Translation language...</option>
+                                        {translationLangs.map((lang) => (
+                                            <option key={lang.code} value={lang.code}>{lang.name}</option>
+                                        ))}
+                                    </select>
+                                    <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={saveToTranslation}>
+                                        Save to translation
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -694,7 +931,25 @@ const DescriptionGenerator = () => {
                         </div>
                     </div>
 
+                    {!isProduct && (
+                        <div className="wacdmg-action-group">
+                            <span className="wacdmg-action-group-label">Post</span>
+                            <div className="wacdmg-action-buttons">
+                                <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={generateExcerpt}>
+                                    Generate Excerpt
+                                </button>
+                                <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={generateTags}>
+                                    Generate Tags
+                                </button>
+                                <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={generateCategories}>
+                                    Suggest Categories
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* WooCommerce group */}
+                    {isProduct && (
                     <div className="wacdmg-action-group">
                         <span className="wacdmg-action-group-label">🛒 WooCommerce</span>
                         <div className="wacdmg-action-buttons">
@@ -710,8 +965,17 @@ const DescriptionGenerator = () => {
                             <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={generateAttributes}>
                                 Extract Attributes
                             </button>
+                            {hasBrands && (
+                                <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={generateBrands}>
+                                    Suggest Brands
+                                </button>
+                            )}
+                            <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={generatePurchaseNote}>
+                                Purchase Note
+                            </button>
                         </div>
                     </div>
+                    )}
 
                     {/* SEO & Image group */}
                     <div className="wacdmg-action-group">
@@ -723,6 +987,11 @@ const DescriptionGenerator = () => {
                             <button type="button" id="wacdmg-btn-image" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={() => setShowImagePanel(true)}>
                                 🎨 Generate AI Image
                             </button>
+                            {isProduct && (
+                                <button type="button" className="wacdmg-btn wacdmg-btn-outline wacdmg-btn-sm" onClick={fillGalleryAlts}>
+                                    Fill empty gallery alts
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

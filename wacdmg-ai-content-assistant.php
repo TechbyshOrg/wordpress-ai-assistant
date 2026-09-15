@@ -26,9 +26,11 @@ require_once WACDMG_PLUGIN_DIR . 'includes/class-wacdmg-admin.php';
 require_once WACDMG_PLUGIN_DIR . 'includes/class-wacdmg-admin-api.php';
 require_once WACDMG_PLUGIN_DIR . 'includes/class-wacdmg-seo.php';
 require_once WACDMG_PLUGIN_DIR . 'includes/class-wacdmg-image-ai.php';
+require_once WACDMG_PLUGIN_DIR . 'includes/class-wacdmg-field-ui.php';
 
 // Initialize classes.
 add_action( 'plugins_loaded', function() {
     new WACDMG_Admin_API();
     new WACDMG_Admin();
+    new WACDMG_Field_UI();
 } );

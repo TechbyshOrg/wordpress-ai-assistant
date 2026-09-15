@@ -184,6 +184,14 @@ export function writePostTitle(content) {
  * Append tags using WooCommerce/WordPress tag UI without replacing existing tags.
  */
 export function writeProductTags(tags) {
+    return writeTaxonomyTags('product_tag', tags);
+}
+
+/**
+ * Append tags for any tag-style taxonomy.
+ */
+export function writeTaxonomyTags(taxonomy, tags) {
+    const tax = taxonomy || 'product_tag';
     const list = (Array.isArray(tags) ? tags : [])
         .map((tag) => String(tag).trim())
         .filter(Boolean);
@@ -193,14 +201,14 @@ export function writeProductTags(tags) {
     }
 
     const $ = typeof window.jQuery === 'function' ? window.jQuery : null;
-    const metabox = document.getElementById('product_tag');
-    const input = document.getElementById('new-tag-product_tag');
+    const metabox = document.getElementById(tax) || document.getElementById('tagsdiv-' + tax);
+    const input = document.getElementById('new-tag-' + tax);
 
     if ($ && window.tagBox && typeof window.tagBox.flushTags === 'function' && metabox && input) {
         $(input).val(list.join(','));
         window.tagBox.flushTags($(metabox));
     } else {
-        const addBtn = document.querySelector('#product_tag .tagadd, .tagsdiv#product_tag .tagadd');
+        const addBtn = document.querySelector('#' + tax + ' .tagadd, .tagsdiv#' + tax + ' .tagadd, #tagsdiv-' + tax + ' .tagadd');
         if (input && addBtn) {
             if ($) {
                 $(input).val(list.join(','));
@@ -212,7 +220,7 @@ export function writeProductTags(tags) {
         }
     }
 
-    const taxInput = document.getElementById('tax-input-product_tag');
+    const taxInput = document.getElementById('tax-input-' + tax);
     if (taxInput) {
         const existing = taxInput.value.split(',').map((item) => item.trim()).filter(Boolean);
         const merged = [];
@@ -233,6 +241,14 @@ export function writeProductTags(tags) {
  * Check generated category names in the WooCommerce category checklist.
  */
 export function writeProductCategories(termIds) {
+    return writeTaxonomyChecklist('product_cat', termIds);
+}
+
+/**
+ * Check generated terms in a hierarchical taxonomy checklist.
+ */
+export function writeTaxonomyChecklist(taxonomy, termIds) {
+    const tax = taxonomy || 'product_cat';
     const ids = (Array.isArray(termIds) ? termIds : [])
         .map((id) => parseInt(id, 10))
         .filter((id) => id > 0);
@@ -243,7 +259,7 @@ export function writeProductCategories(termIds) {
 
     let written = false;
     ids.forEach((id) => {
-        const box = document.getElementById('in-product_cat-' + id);
+        const box = document.getElementById('in-' + tax + '-' + id);
         if (box) {
             box.checked = true;
             dispatchFieldEvents(box);
@@ -253,7 +269,7 @@ export function writeProductCategories(termIds) {
 
     if (isBlockEditor() && window.wp?.data?.dispatch) {
         try {
-            window.wp.data.dispatch('core/editor').editPost({ product_cat: ids });
+            window.wp.data.dispatch('core/editor').editPost({ [tax]: ids });
             written = true;
         } catch (e) {
             // Classic screens may not have this store.
