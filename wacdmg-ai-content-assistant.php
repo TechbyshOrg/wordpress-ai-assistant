@@ -16,6 +16,7 @@ Description: Smart AI content generator for WordPress and WooCommerce — create
 defined( 'ABSPATH' ) || exit;
 
 // Plugin constants.
+define( 'WACDMG_PLUGIN_FILE', __FILE__ );
 define( 'WACDMG_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WACDMG_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'WACDMG_PLUGIN_VERSION', '2.0.1' );

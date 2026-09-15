@@ -30,9 +30,32 @@ class WACDMG_Admin {
         add_action( 'enqueue_block_editor_assets', array( $this, 'wacdmg_enqueue_admin_block_scripts' ) );
         add_action( 'elementor/editor/after_enqueue_scripts', array( $this, 'wacdmg_enqueue_field_assistant' ) );
         add_action( 'admin_init', array( $this, 'wacdmg_register_term_panels' ) );
+        add_filter( 'plugin_action_links_' . plugin_basename( WACDMG_PLUGIN_FILE ), array( $this, 'wacdmg_plugin_action_links' ) );
         add_filter( 'attachment_fields_to_edit', array( $this, 'wacdmg_attachment_alt_field' ), 10, 2 );
         add_filter( 'bulk_actions-edit-product', array( $this, 'wacdmg_register_product_bulk_action' ) );
         add_filter( 'handle_bulk_actions-edit-product', array( $this, 'wacdmg_handle_product_bulk_action' ), 10, 3 );
+    }
+
+    /**
+     * Add a Settings link next to Activate/Deactivate on the Plugins screen.
+     *
+     * @param array $links Existing plugin action links.
+     * @return array
+     */
+    public function wacdmg_plugin_action_links( $links ) {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return $links;
+        }
+
+        $settings_link = sprintf(
+            '<a href="%s">%s</a>',
+            esc_url( admin_url( 'admin.php?page=wacdmg-settings' ) ),
+            esc_html__( 'Settings', 'wacdmg-ai-content-assistant' )
+        );
+
+        array_unshift( $links, $settings_link );
+
+        return $links;
     }
 
     /**
