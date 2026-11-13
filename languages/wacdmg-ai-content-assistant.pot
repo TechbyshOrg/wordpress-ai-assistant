@@ -1,32 +1,33 @@
-# Copyright (C) 2025 Techbysh
+# Copyright (C) 2026 Techbysh
 # This file is distributed under the GPLv2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: AI Content & Meta Assistant 2.1.0\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/wp-ai-content-description-meta-generator\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"Project-Id-Version: AI Content & Meta Assistant 2.1.1\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/wacdmg-ai-content-assistant\n"
+"Last-Translator: \n"
+"Language-Team: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2025-07-03T11:02:52+00:00\n"
+"POT-Creation-Date: 2026-11-13T13:47:54+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.11.0\n"
 "X-Domain: wacdmg-ai-content-assistant\n"
 
 #. Plugin Name of the plugin
 #: wacdmg-ai-content-assistant.php
+#: includes/class-wacdmg-admin.php:59
 msgid "AI Content & Meta Assistant"
 msgstr ""
 
 #. Plugin URI of the plugin
 #: wacdmg-ai-content-assistant.php
-msgid "https://wordpress.org/plugins/smart-ai-assistant-content/"
+msgid "https://wordpress.org/plugins/wacdmg-ai-content-assistant/"
 msgstr ""
 
 #. Description of the plugin
 #: wacdmg-ai-content-assistant.php
-msgid "Smart AI content generator for WordPress and WooCommerce — create product descriptions, blog posts, and SEO meta with a click."
+msgid "AI writer for WordPress and WooCommerce. Generate product descriptions, SEO meta, blog content, and images with ChatGPT, Gemini, or Claude."
 msgstr ""
 
 #. Author of the plugin
@@ -39,11 +40,594 @@ msgstr ""
 msgid "https://techbysh.com"
 msgstr ""
 
-#: includes/class-wacdmg-admin.php:31
-#: includes/class-wacdmg-admin.php:32
+#: includes/class-wacdmg-admin.php:52
+msgid "AI Content & Meta Assistant does not collect data from site visitors and sets no cookies. The text below describes how site staff use AI services; review it and keep only what applies to your site."
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:54
+msgid "Suggested text:"
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:55
+msgid "We use third-party artificial intelligence (AI) services to help write and edit content on this website, such as product descriptions, page text, image descriptions, and search engine metadata. When our staff use these tools, the content being worked on (for example a product name, existing text, or an image from our media library) is sent to the AI provider we have chosen to generate a suggestion. We do not send visitor or customer personal data, such as order details, to these services. The providers we may use include OpenAI, Google (Gemini), Anthropic (Claude), Mistral AI, Groq, OpenRouter, and Together AI, each under its own privacy policy."
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:78
+#: includes/class-wacdmg-admin.php:104
+#: includes/class-wacdmg-admin.php:105
+msgid "Settings"
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:92
+#: includes/class-wacdmg-admin.php:93
 msgid "AI Assistant"
 msgstr ""
 
-#: templates/admin-wacdmg-settings.php:2
-msgid "Settings Page"
+#: includes/class-wacdmg-admin.php:114
+#: includes/class-wacdmg-admin.php:115
+msgid "Image Generator"
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:124
+#: includes/class-wacdmg-admin.php:125
+#: templates/admin-wacdmg-templates.php:3
+msgid "Content Templates"
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:134
+#: includes/class-wacdmg-admin.php:135
+msgid "Usage Log"
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:143
+#: includes/class-wacdmg-admin.php:144
+msgid "Bulk Fill"
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:584
+#: block-app/src/wpBlock/image-alt-extension.jsx:79
+msgid "AI Alt Text"
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:589
+#: includes/class-wacdmg-field-ui.php:48
+msgid "Generate with AI"
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:594
+msgid "AI Caption"
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:599
+msgid "Generate caption"
+msgstr ""
+
+#: includes/class-wacdmg-admin.php:718
+msgid "AI fill empty content"
+msgstr ""
+
+#: includes/class-wacdmg-field-ui.php:34
+msgid "field"
+msgstr ""
+
+#: includes/class-wacdmg-field-ui.php:49
+#: block-app/src/wpBlock/text-block-extension.jsx:132
+msgid "Improve"
+msgstr ""
+
+#: includes/class-wacdmg-field-ui.php:50
+#: block-app/src/wpBlock/text-block-extension.jsx:133
+msgid "Translate"
+msgstr ""
+
+#: includes/class-wacdmg-image-ai.php:34
+msgid "The image provider did not return an image."
+msgstr ""
+
+#: includes/class-wacdmg-image-ai.php:45
+msgid "Could not download the generated image."
+msgstr ""
+
+#: includes/class-wacdmg-image-ai.php:67
+msgid "The image provider returned an empty image."
+msgstr ""
+
+#: includes/class-wacdmg-image-ai.php:70
+msgid "The generated image is too large to save."
+msgstr ""
+
+#: includes/class-wacdmg-image-ai.php:81
+#: includes/class-wacdmg-image-ai.php:184
+msgid "Could not write a temporary file for the image."
+msgstr ""
+
+#: includes/class-wacdmg-image-ai.php:92
+msgid "The generated file is not a supported image type."
+msgstr ""
+
+#: includes/class-wacdmg-image-ai.php:104
+msgid "AI generated image"
+msgstr ""
+
+#: includes/class-wacdmg-image-ai.php:149
+msgid "Choose an image from the Media Library first. AI alt text needs to see the image itself."
+msgstr ""
+
+#: includes/class-wacdmg-image-ai.php:179
+msgid "Could not read this image file."
+msgstr ""
+
+#: includes/class-wacdmg-image-ai.php:242
+#: includes/class-wacdmg-image-ai.php:250
+msgid "This image format cannot be sent to the AI provider."
+msgstr ""
+
+#: templates/admin-wacdmg-bulk-products.php:3
+msgid "AI Bulk Fill"
+msgstr ""
+
+#: templates/admin-wacdmg-image-generator.php:3
+msgid "AI Image Generator"
+msgstr ""
+
+#: templates/admin-wacdmg-settings.php:3
+msgid "AI Assistant Settings"
+msgstr ""
+
+#: templates/admin-wacdmg-usage-log.php:3
+msgid "AI Usage Log"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:45
+msgid "Please enter an image prompt."
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:71
+msgid "Image generated and set as Featured Image!"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:72
+msgid "Image generated and saved to Media Library!"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:73
+msgid "Image generated!"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:76
+msgid "Failed to generate image."
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:80
+msgid "Network error. Check your image generation settings."
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:99
+msgid "AI Featured Image"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:103
+msgid "Image Prompt"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:104
+msgid "Describe the image you want to generate."
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:108
+msgid "e.g., Professional product photo on white background..."
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:113
+msgid "Auto-fill from post title"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:118
+msgid "Style Preset"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:125
+msgid "Save to Media Library"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:131
+msgid "Set as Featured Image"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:143
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:286
+#: block-app/src/wpBlock/seo-panel-extension.jsx:113
+#: block-app/src/wpBlock/text-block-extension.jsx:165
+msgid "Generating..."
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:143
+msgid "Generate Image"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:151
+#: block-app/src/wpBlock/image-alt-extension.jsx:116
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:299
+#: block-app/src/wpBlock/product-ai-panel.jsx:473
+#: block-app/src/wpBlock/seo-panel-extension.jsx:121
+#: block-app/src/wpBlock/text-block-extension.jsx:177
+msgid "Cancel"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:165
+msgid "AI Generated"
+msgstr ""
+
+#: block-app/src/wpBlock/ai-image-panel.jsx:175
+msgid "View in Media Library"
+msgstr ""
+
+#: block-app/src/wpBlock/image-alt-extension.jsx:55
+msgid "Caption added. Review it before saving."
+msgstr ""
+
+#: block-app/src/wpBlock/image-alt-extension.jsx:56
+msgid "Alt text added. Review it before saving."
+msgstr ""
+
+#: block-app/src/wpBlock/image-alt-extension.jsx:61
+#: block-app/src/wpBlock/product-ai-panel.jsx:126
+msgid "Generation failed."
+msgstr ""
+
+#: block-app/src/wpBlock/image-alt-extension.jsx:67
+#: block-app/src/wpBlock/text-block-extension.jsx:113
+msgid "Network error."
+msgstr ""
+
+#: block-app/src/wpBlock/image-alt-extension.jsx:82
+msgid "AI alt text needs an image from the Media Library. Images inserted from a URL cannot be read."
+msgstr ""
+
+#: block-app/src/wpBlock/image-alt-extension.jsx:92
+#: block-app/src/wpBlock/image-alt-extension.jsx:103
+msgid "Looking at the image..."
+msgstr ""
+
+#: block-app/src/wpBlock/image-alt-extension.jsx:93
+msgid "Generate Alt Text"
+msgstr ""
+
+#: block-app/src/wpBlock/image-alt-extension.jsx:104
+msgid "Generate Caption"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:171
+msgid "Content generated successfully!"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:173
+#: block-app/src/wpBlock/text-block-extension.jsx:107
+msgid "Error generating content."
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:177
+msgid "Network error. Please check your connection."
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:187
+msgid "Replace current content with previous content?"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:196
+#: assets/js/block-enhancer.js:27385
+msgid "AI Content Generator"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:200
+#: assets/js/block-enhancer.js:27390
+msgid "Generation Type"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:215
+#: block-app/src/wpBlock/text-block-extension.jsx:140
+#: assets/js/block-enhancer.js:27405
+msgid "Custom Prompt"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:216
+msgid "Enter your instructions..."
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:224
+#: block-app/src/wpBlock/product-ai-panel.jsx:144
+#: block-app/src/wpBlock/text-block-extension.jsx:147
+msgid "Tone"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:231
+#: block-app/src/wpBlock/product-ai-panel.jsx:150
+#: block-app/src/wpBlock/text-block-extension.jsx:153
+msgid "Language"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:239
+msgid "Use template"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:242
+#: block-app/src/wpBlock/product-ai-panel.jsx:161
+msgid "Select template..."
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:261
+msgid "Limit Word Count"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:268
+msgid "Max Words"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:287
+#: block-app/src/wpBlock/text-block-extension.jsx:166
+#: assets/js/block-enhancer.js:27439
+msgid "Generate Content"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:304
+#: assets/js/block-enhancer.js:27469
+#: assets/js/block-enhancer.js:27482
+msgid "Reuse Previous Content"
+msgstr ""
+
+#: block-app/src/wpBlock/paragraph-block-extension.jsx:324
+msgid "Reset All"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:116
+msgid "Please add a product title first."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:140
+msgid "AI Product Assistant"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:158
+msgid "Template"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:174
+#: block-app/src/wpBlock/product-ai-panel.jsx:198
+#: block-app/src/wpBlock/product-ai-panel.jsx:215
+#: block-app/src/wpBlock/product-ai-panel.jsx:233
+#: block-app/src/wpBlock/product-ai-panel.jsx:252
+#: block-app/src/wpBlock/product-ai-panel.jsx:278
+#: block-app/src/wpBlock/product-ai-panel.jsx:302
+#: block-app/src/wpBlock/product-ai-panel.jsx:326
+#: block-app/src/wpBlock/product-ai-panel.jsx:349
+#: block-app/src/wpBlock/product-ai-panel.jsx:401
+#: block-app/src/wpBlock/product-ai-panel.jsx:417
+#: block-app/src/wpBlock/product-ai-panel.jsx:434
+msgid "Failed."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:177
+msgid "Description generated from template."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:181
+msgid "Run Template"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:187
+msgid "Missing: "
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:201
+msgid "Description generated."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:205
+msgid "Generate Description"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:219
+msgid "Title updated."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:223
+msgid "Improve Title"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:236
+msgid "Short description generated."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:240
+msgid "Generate Short Description"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:260
+msgid "Tags applied: "
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:266
+msgid "Generate Product Tags"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:284
+msgid "Categories applied: "
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:290
+msgid "Suggest Categories"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:306
+msgid "Attributes saved. Reload Attributes if they are not visible yet. "
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:312
+msgid "Extract Attributes"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:332
+msgid "Brands applied: "
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:338
+msgid "Suggest Brands"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:356
+msgid "Purchase note saved."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:360
+msgid "Generate Purchase Note"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:381
+msgid "Gallery alt text updated: "
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:387
+msgid "Fill empty gallery alts"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:403
+msgid "SEO meta generated and saved."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:407
+#: block-app/src/wpBlock/seo-panel-extension.jsx:113
+msgid "Generate SEO Meta"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:420
+msgid "Description translated."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:424
+msgid "Translate Description"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:437
+msgid "Short description summarized from content."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:441
+msgid "Summarize to Short Description"
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:457
+msgid "No translation exists."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:459
+msgid "Saved to the existing translation."
+msgstr ""
+
+#: block-app/src/wpBlock/product-ai-panel.jsx:463
+msgid "Save to translation"
+msgstr ""
+
+#: block-app/src/wpBlock/seo-panel-extension.jsx:40
+msgid "Please add a post title first."
+msgstr ""
+
+#: block-app/src/wpBlock/seo-panel-extension.jsx:67
+msgid "SEO meta generated and saved to"
+msgstr ""
+
+#: block-app/src/wpBlock/seo-panel-extension.jsx:72
+msgid "Failed to generate SEO meta."
+msgstr ""
+
+#: block-app/src/wpBlock/seo-panel-extension.jsx:78
+msgid "Network error. Check your AI settings."
+msgstr ""
+
+#: block-app/src/wpBlock/seo-panel-extension.jsx:90
+msgid "AI SEO Assistant"
+msgstr ""
+
+#: block-app/src/wpBlock/seo-panel-extension.jsx:100
+msgid "Focus Keywords (optional)"
+msgstr ""
+
+#: block-app/src/wpBlock/seo-panel-extension.jsx:101
+msgid "Comma-separated keywords to guide SEO meta generation."
+msgstr ""
+
+#: block-app/src/wpBlock/seo-panel-extension.jsx:137
+msgid "SEO Title"
+msgstr ""
+
+#: block-app/src/wpBlock/seo-panel-extension.jsx:150
+msgid "Meta Description"
+msgstr ""
+
+#: block-app/src/wpBlock/text-block-extension.jsx:73
+#: block-app/src/wpBlock/text-block-extension.jsx:79
+msgid "Add content first."
+msgstr ""
+
+#: block-app/src/wpBlock/text-block-extension.jsx:104
+msgid "Content generated."
+msgstr ""
+
+#: block-app/src/wpBlock/text-block-extension.jsx:125
+msgid "AI Content Assistant"
+msgstr ""
+
+#: block-app/src/wpBlock/text-block-extension.jsx:127
+msgid "Action"
+msgstr ""
+
+#: block-app/src/wpBlock/text-block-extension.jsx:130
+msgid "Select action..."
+msgstr ""
+
+#: block-app/src/wpBlock/text-block-extension.jsx:131
+msgid "Generate"
+msgstr ""
+
+#: block-app/src/wpBlock/text-block-extension.jsx:134
+msgid "Custom prompt"
+msgstr ""
+
+#: assets/js/block-enhancer.js:27367
+msgid "Are you sure you want to reuse the previous content? This will replace the current content with the previous one."
+msgstr ""
+
+#: assets/js/block-enhancer.js:27392
+msgid "Choose how you want to generate content"
+msgstr ""
+
+#: assets/js/block-enhancer.js:27406
+msgid "Enter specific instructions for content generation"
+msgstr ""
+
+#: assets/js/block-enhancer.js:27407
+msgid "e.g., \"Write a professional introduction about our company\""
+msgstr ""
+
+#: assets/js/block-enhancer.js:27415
+msgid "Enable Word Count"
+msgstr ""
+
+#: assets/js/block-enhancer.js:27416
+msgid "Set a specific word count for the generated content"
+msgstr ""
+
+#: assets/js/block-enhancer.js:27423
+msgid "Word Count"
+msgstr ""
+
+#: assets/js/block-enhancer.js:27451
+msgid "Generated Content Preview:"
+msgstr ""
+
+#: assets/js/block-enhancer.js:27462
+msgid "Reset Generated to Previous"
+msgstr ""
+
+#: assets/js/block-enhancer.js:27499
+msgid "Reset Settings"
 msgstr ""

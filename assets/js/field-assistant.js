@@ -11,6 +11,77 @@
         return !!error && (error.name === 'AbortError' || error.code === 20);
     }
 
+    // ---------------------------------------------------------------------
+    // Language selection
+    // ---------------------------------------------------------------------
+
+    var LANGUAGE_STORAGE_KEY = 'wacdmgFieldLanguage';
+
+    function languages() {
+        var list = cfg().languages;
+        return Array.isArray(list) && list.length ? list : ['English'];
+    }
+
+    function storedLanguage() {
+        try {
+            var value = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+            return value && languages().indexOf(value) !== -1 ? value : '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function rememberLanguage(value) {
+        try {
+            window.localStorage.setItem(LANGUAGE_STORAGE_KEY, value);
+        } catch (e) {
+            // Storage unavailable (private mode); the choice just isn't remembered.
+        }
+    }
+
+    function initialLanguage() {
+        return storedLanguage() || cfg().defaultLanguage || languages()[0];
+    }
+
+    /**
+     * Add a language selector to a button row (once).
+     */
+    function enhanceRow(row) {
+        if (!row || row.querySelector('.wacdmg-field-ai-lang')) {
+            return;
+        }
+        var select = document.createElement('select');
+        select.className = 'wacdmg-field-ai-lang';
+        select.setAttribute('aria-label', 'AI language');
+        select.title = 'Language for Generate, Improve, and Translate';
+        var current = initialLanguage();
+        languages().forEach(function (name) {
+            var option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            if (name === current) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        select.addEventListener('change', function () {
+            rememberLanguage(select.value);
+        });
+
+        var status = row.querySelector('.wacdmg-field-ai-status');
+        row.insertBefore(select, status || null);
+    }
+
+    function enhanceRows(root) {
+        (root || document).querySelectorAll('.wacdmg-field-ai-row').forEach(enhanceRow);
+    }
+
+    function languageFor(btn) {
+        var row = btn.closest('.wacdmg-field-ai-row');
+        var select = row ? row.querySelector('.wacdmg-field-ai-lang') : null;
+        return (select && select.value) || initialLanguage();
+    }
+
     function startSignal() {
         if (active && active.inFlight) {
             active.inFlight = false;
@@ -140,7 +211,32 @@
         return input ? input.value : '';
     }
 
-    function writeAdapter(btn, value) {
+    var SANITIZE_CONFIG = {
+        USE_PROFILES: { html: true },
+        FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'option', 'iframe', 'frame', 'object', 'embed', 'base', 'link', 'meta'],
+        FORBID_ATTR: ['style', 'srcdoc', 'formaction'],
+    };
+
+    /**
+     * Sanitize AI output before it is written into a field or editor.
+     *
+     * Plain text (no angle brackets) is returned unchanged so characters such as "&"
+     * are not escaped. Anything containing markup goes through DOMPurify; if DOMPurify
+     * is unavailable, the markup is escaped rather than trusted.
+     */
+    function safeHtml(value) {
+        var text = value == null ? '' : String(value);
+        if (!/[<>]/.test(text)) {
+            return text;
+        }
+        if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
+            return window.DOMPurify.sanitize(text, SANITIZE_CONFIG);
+        }
+        return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function writeAdapter(btn, rawValue) {
+        var value = safeHtml(rawValue);
         var adapter = btn.getAttribute('data-adapter') || 'textarea';
         var key = btn.getAttribute('data-field-key') || '';
         var wrap = closestFieldWrap(btn);
@@ -210,9 +306,8 @@
         return true;
     }
 
-    function promptFor(action, label, current) {
+    function promptFor(action, label, current, language) {
         var title = postTitle();
-        var language = 'English';
         var tone = 'informative';
         if (action === 'improve') {
             return 'Improve this "' + label + '" field value.' + (title ? ' Context: "' + title + '".' : '') + '\n\n"' + current + '"\n\nWrite in ' + language + '. Tone: ' + tone + '.\nKeep facts. Return only the improved value.';
@@ -223,7 +318,7 @@
         return 'Write content for the "' + label + '" field.' + (title ? ' The content is for: "' + title + '".' : '') + '\nWrite in ' + language + '. Tone: ' + tone + '.\nReturn only the field value. No labels or explanation.';
     }
 
-    function variationPrompt(current) {
+    function variationPrompt(current, language) {
         var title = postTitle();
         var wrap = document.querySelector('.woocommerce_variation.open') || document.querySelector('.woocommerce_variation');
         var attrs = '';
@@ -231,7 +326,7 @@
             var h3 = wrap.querySelector('h3');
             attrs = h3 ? h3.textContent.replace(/\s+/g, ' ').trim() : '';
         }
-        return 'Write a short WooCommerce variation description for "' + title + '".' + (attrs ? ' Variation attributes: ' + attrs + '.' : '') + (current ? '\nCurrent description: "' + current.substring(0, 300) + '"' : '') + '\nWrite in English. Tone: informative.\n2-4 sentences. Return only the description as plain text.';
+        return 'Write a short WooCommerce variation description for "' + title + '".' + (attrs ? ' Variation attributes: ' + attrs + '.' : '') + (current ? '\nCurrent description: "' + current.substring(0, 300) + '"' : '') + '\nWrite in ' + language + '. Tone: informative.\n2-4 sentences. Return only the description as plain text.';
     }
 
     function setStatus(btn, text, isError) {
@@ -255,9 +350,10 @@
             return;
         }
 
+        var language = languageFor(btn);
         var prompt = btn.getAttribute('data-adapter') === 'variation'
-            ? variationPrompt(current)
-            : promptFor(action, label, current);
+            ? variationPrompt(current, language)
+            : promptFor(action, label, current, language);
 
         var signal = startSignal();
         var buttons = (btn.closest('.wacdmg-field-ai-row') || document).querySelectorAll('.wacdmg-field-ai');
@@ -327,6 +423,7 @@
                 + '<button type="button" class="button wacdmg-field-ai" data-action="improve" data-adapter="variation" data-field-label="variation description">Improve</button> '
                 + '<span class="wacdmg-field-ai-status"></span>';
             ta.parentNode.insertBefore(row, ta.nextSibling);
+            enhanceRow(row);
         });
     }
 
@@ -342,6 +439,7 @@
             row.innerHTML = '<button type="button" class="button wacdmg-field-ai" data-action="generate" data-adapter="textarea" data-field-label="product tab title">Generate with AI</button> '
                 + '<span class="wacdmg-field-ai-status"></span>';
             input.parentNode.appendChild(row);
+            enhanceRow(row);
         });
         var contents = scope.querySelectorAll('textarea.yikes_woo_tabs_content, textarea[name*="yikes_woo_products_tabs"][name*="[content]"]');
         contents.forEach(function (ta) {
@@ -350,10 +448,14 @@
             }
             var row = document.createElement('p');
             row.className = 'wacdmg-field-ai-row';
-            row.innerHTML = '<button type="button" class="button wacdmg-field-ai" data-action="generate" data-adapter="tinymce" data-field-key="' + (ta.id || '') + '" data-field-label="product tab content">Generate with AI</button> '
-                + '<button type="button" class="button wacdmg-field-ai" data-action="improve" data-adapter="tinymce" data-field-key="' + (ta.id || '') + '" data-field-label="product tab content">Improve</button> '
+            row.innerHTML = '<button type="button" class="button wacdmg-field-ai" data-action="generate" data-adapter="tinymce" data-field-label="product tab content">Generate with AI</button> '
+                + '<button type="button" class="button wacdmg-field-ai" data-action="improve" data-adapter="tinymce" data-field-label="product tab content">Improve</button> '
                 + '<span class="wacdmg-field-ai-status"></span>';
+            row.querySelectorAll('.wacdmg-field-ai').forEach(function (b) {
+                b.setAttribute('data-field-key', ta.id || '');
+            });
             ta.parentNode.appendChild(row);
+            enhanceRow(row);
         });
     }
 
@@ -378,29 +480,52 @@
             + '<button type="button" class="elementor-button wacdmg-field-ai" data-action="translate" data-adapter="elementor" data-field-label="selected control">Translate</button> '
             + '<span class="wacdmg-field-ai-status"></span>';
         panel.insertBefore(box, panel.firstChild);
+        enhanceRow(box);
     }
 
+    /**
+     * Add buttons to WooCommerce variation descriptions and YIKES product tabs.
+     *
+     * Those fields only exist inside the classic product data box, and WooCommerce loads
+     * variations into it with AJAX. So only that box is watched, and only on product screens.
+     * Bursts of DOM changes are batched into one scan per animation frame.
+     */
     function observeWoo() {
-        var target = document.getElementById('woocommerce-product-data') || document.body;
+        // Rows already on the page (e.g. YIKES tabs rendered with the page).
+        injectVariationButtons(document);
+        injectYikesButtons(document);
+
+        var target = document.getElementById('woocommerce-product-data');
         if (!target || target.getAttribute('data-wacdmg-observed')) {
             return;
         }
         target.setAttribute('data-wacdmg-observed', '1');
-        injectVariationButtons(document);
-        injectYikesButtons(document);
+
+        var scheduled = false;
+        var schedule = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); };
+        var scan = function () {
+            scheduled = false;
+            injectVariationButtons(target);
+            injectYikesButtons(target);
+        };
+
         var observer = new MutationObserver(function () {
-            injectVariationButtons(document);
-            injectYikesButtons(document);
+            if (!scheduled) {
+                scheduled = true;
+                schedule(scan);
+            }
         });
         observer.observe(target, { childList: true, subtree: true });
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        enhanceRows(document);
         observeWoo();
         mountElementorPanel();
     });
 
     if (document.readyState !== 'loading') {
+        enhanceRows(document);
         observeWoo();
         mountElementorPanel();
     }

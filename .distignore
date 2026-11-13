@@ -31,6 +31,8 @@ CONTRIBUTING.md
 CODE_OF_CONDUCT.md
 SECURITY.md
 CHANGELOG.md
+CLAUDE.md
+docs
 
 # =============================================
 # JS source — compiled files live in assets/js
@@ -80,7 +82,8 @@ phpstan.neon.dist
 .env.development
 *.local
 *.map
-*.LICENSE.txt
+# Note: *.LICENSE.txt files are intentionally shipped. They hold the license
+# notices for third-party code bundled into assets/js (React, DOMPurify).
 *.log
 .DS_Store
 Thumbs.db

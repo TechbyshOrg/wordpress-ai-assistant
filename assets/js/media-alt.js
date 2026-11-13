@@ -5,68 +5,84 @@
         return window.wacdmgMediaAlt || {};
     }
 
-    function setStatus($btn, text, isError) {
-        var $status = $btn.siblings('.wacdmg-alt-status');
+    function findStatus($btn, className) {
+        var $status = $btn.siblings('.' + className);
         if (!$status.length) {
-            $status = $btn.parent().find('.wacdmg-alt-status');
+            $status = $btn.parent().find('.' + className);
         }
+        return $status;
+    }
+
+    function setStatus($status, text, isError) {
         $status.text(text || '');
         $status.css('color', isError ? '#b32d2e' : '#1e8c3e');
     }
 
-    function generateAlt($btn) {
+    /**
+     * Ask the server to look at the image and write alt text or a caption.
+     * The result is placed in the field for review; the server does not save it.
+     */
+    function requestImageText(attachmentId, target) {
+        var cfg = getConfig();
+        return fetch(cfg.apiBaseUrl + '/generate-alt-text', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-WP-Nonce': cfg.restNonce || '',
+            },
+            body: JSON.stringify({
+                attachment_id: attachmentId,
+                target: target,
+            }),
+        }).then(function (res) {
+            return res.json().catch(function () {
+                return null;
+            }).then(function (data) {
+                var payload = (data && data.data) || {};
+                var text = target === 'caption' ? payload.caption : payload.alt_text;
+                if (!res.ok || !text) {
+                    throw new Error(payload.message || (data && data.message) || 'Generation failed.');
+                }
+                return text;
+            });
+        });
+    }
+
+    function generate($btn, target) {
         var cfg = getConfig();
         var attachmentId = parseInt($btn.attr('data-attachment-id'), 10) || 0;
         if (!attachmentId || !cfg.apiBaseUrl) {
             return;
         }
 
-        var title = $('#attachment-details-two-column-title').val()
-            || $('#attachment-details-title').val()
-            || $('input[name="attachments[' + attachmentId + '][post_title]"]').val()
-            || '';
-        var prompt = 'Write concise, descriptive alt text for this WordPress media image.'
-            + (title ? ' Image title: "' + title + '".' : '')
-            + ' Under 125 characters. Return only the alt text as plain text.';
+        var isCaption = target === 'caption';
+        var $status = findStatus($btn, isCaption ? 'wacdmg-caption-status' : 'wacdmg-alt-status');
 
         $btn.prop('disabled', true);
-        setStatus($btn, 'Generating...', false);
+        setStatus($status, 'Looking at the image...', false);
 
-        fetch(cfg.apiBaseUrl + '/generate-alt-text', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-WP-Nonce': cfg.restNonce || '',
-            },
-            body: JSON.stringify({
-                prompt: prompt,
-                attachment_id: attachmentId,
-            }),
-        })
-            .then(function (res) {
-                return res.json().then(function (data) {
-                    return { ok: res.ok, data: data };
-                });
-            })
-            .then(function (result) {
-                var alt = result.data && result.data.data && result.data.data.alt_text;
-                var err = (result.data && result.data.data && result.data.data.message)
-                    || (result.data && result.data.message);
-                if (!result.ok || !alt) {
-                    setStatus($btn, err || 'Failed to generate alt text.', true);
+        requestImageText(attachmentId, target)
+            .then(function (text) {
+                var $field = isCaption
+                    ? $('#attachment-details-two-column-caption')
+                        .add('#attachment-details-caption')
+                        .add('textarea[name="attachments[' + attachmentId + '][post_excerpt]"]')
+                    : $('#attachment-details-two-column-alt-text')
+                        .add('#attachment-details-alt-text')
+                        .add('textarea[name="attachments[' + attachmentId + '][image_alt]"]')
+                        .add('input[name="attachments[' + attachmentId + '][image_alt]"]');
+
+                if (!$field.length) {
+                    setStatus($status, 'Generated, but the field was not found: ' + text, true);
                     return;
                 }
 
-                var $altField = $('#attachment-details-two-column-alt-text')
-                    .add('#attachment-details-alt-text')
-                    .add('textarea[name="attachments[' + attachmentId + '][image_alt]"]')
-                    .add('input[name="attachments[' + attachmentId + '][image_alt]"]');
-
-                $altField.val(alt).trigger('change');
-                setStatus($btn, 'Alt text generated.', false);
+                $field.val(text).trigger('change');
+                setStatus($status, (isCaption ? 'Caption' : 'Alt text') + ' added. Review it and edit if needed.', false);
             })
-            .catch(function () {
-                setStatus($btn, 'Network error. Check AI settings.', true);
+            .catch(function (error) {
+                setStatus($status, (error && error.message) || 'Network error. Check AI settings.', true);
             })
             .finally(function () {
                 $btn.prop('disabled', false);
@@ -75,79 +91,11 @@
 
     $(document).on('click', '.wacdmg-gen-alt-btn', function (e) {
         e.preventDefault();
-        generateAlt($(this));
+        generate($(this), 'alt');
     });
-
-    function generateCaption($btn) {
-        var cfg = getConfig();
-        var attachmentId = parseInt($btn.attr('data-attachment-id'), 10) || 0;
-        if (!attachmentId || !cfg.apiBaseUrl) {
-            return;
-        }
-
-        var title = $('#attachment-details-two-column-title').val()
-            || $('#attachment-details-title').val()
-            || $('input[name="attachments[' + attachmentId + '][post_title]"]').val()
-            || '';
-        var alt = $('#attachment-details-two-column-alt-text').val()
-            || $('#attachment-details-alt-text').val()
-            || $('textarea[name="attachments[' + attachmentId + '][image_alt]"]').val()
-            || '';
-        var prompt = 'Write a concise image caption.'
-            + (title ? ' Title: "' + title + '".' : '')
-            + (alt ? ' Alt text: "' + alt + '".' : '')
-            + ' One or two sentences. Return only the caption as plain text.';
-
-        $btn.prop('disabled', true);
-        var $status = $btn.siblings('.wacdmg-caption-status');
-        if (!$status.length) {
-            $status = $btn.parent().find('.wacdmg-caption-status');
-        }
-        $status.text('Generating...').css('color', '#1e8c3e');
-
-        fetch(cfg.apiBaseUrl + '/generate-alt-text', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-WP-Nonce': cfg.restNonce || '',
-            },
-            body: JSON.stringify({
-                prompt: prompt,
-                attachment_id: attachmentId,
-                target: 'caption',
-            }),
-        })
-            .then(function (res) {
-                return res.json().then(function (data) {
-                    return { ok: res.ok, data: data };
-                });
-            })
-            .then(function (result) {
-                var caption = result.data && result.data.data && result.data.data.caption;
-                var err = (result.data && result.data.data && result.data.data.message)
-                    || (result.data && result.data.message);
-                if (!result.ok || !caption) {
-                    $status.text(err || 'Failed to generate caption.').css('color', '#b32d2e');
-                    return;
-                }
-
-                var $captionField = $('#attachment-details-two-column-caption')
-                    .add('#attachment-details-caption')
-                    .add('textarea[name="attachments[' + attachmentId + '][post_excerpt]"]');
-
-                $captionField.val(caption).trigger('change');
-                $status.text('Caption generated.').css('color', '#1e8c3e');
-            })
-            .catch(function () {
-                $status.text('Network error. Check AI settings.').css('color', '#b32d2e');
-            })
-            .finally(function () {
-                $btn.prop('disabled', false);
-            });
-    }
 
     $(document).on('click', '.wacdmg-gen-caption-btn', function (e) {
         e.preventDefault();
-        generateCaption($(this));
+        generate($(this), 'caption');
     });
 })(jQuery);

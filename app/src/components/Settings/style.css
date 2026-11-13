@@ -592,3 +592,12 @@
         padding: 10px 12px;
     }
 }
+/* Saved model missing from the provider's live list */
+.wacdmg-model-warning {
+    margin: 6px 0 0;
+    padding: 6px 10px;
+    border-left: 4px solid #dba617;
+    background: #fcf9e8;
+    color: #1d2327;
+    font-size: 12px;
+}

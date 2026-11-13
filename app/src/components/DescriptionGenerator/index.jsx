@@ -4,6 +4,7 @@ import { createGenerationSession, isAbortError } from '../../utils/generationReq
 import { readWpEditorContent, writeWpEditorContent, writePostTitle, writeProductAttributes, writeTaxonomyTags, writeTaxonomyChecklist } from '../../utils/wpEditor';
 import './style.css';
 import ProductPromptGenerator from '../../utils/PromptGenerator';
+import { sanitizeAiHtml } from '../../utils/sanitizeHtml';
 import { toneOptions, languageOptions } from '../../utils/variables';
 
 const fillTemplatePlaceholders = (prompt, { title = '', content = '', keywords = '' } = {}) => {
@@ -432,9 +433,10 @@ const DescriptionGenerator = () => {
         try {
             for (const attachmentId of ids) {
                 const response = await callWpApi('/generate-alt-text', 'POST', {
-                    prompt: 'Write concise, descriptive alt text for this WordPress product gallery image. Under 125 characters. Return only the alt text as plain text.',
                     attachment_id: attachmentId,
+                    context: getProductName(),
                     skip_if_filled: true,
+                    save: true,
                 }, { signal });
                 if (response.success && !response.data?.skipped) {
                     filled += 1;
@@ -1029,7 +1031,7 @@ const DescriptionGenerator = () => {
                     </div>
                     <div
                         className="wacdmg-output-content"
-                        dangerouslySetInnerHTML={{ __html: generatedDescription }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeAiHtml(generatedDescription) }}
                     />
                 </div>
             )}
@@ -1104,6 +1106,9 @@ const DescriptionGenerator = () => {
                             <img src={generatedImage.url} alt="AI Generated" className="wacdmg-generated-image" />
                             {generatedImage.attachment_id && (
                                 <p className="wacdmg-image-saved">✅ Saved to Media Library (ID: {generatedImage.attachment_id})</p>
+                            )}
+                            {generatedImage.save_error && (
+                                <p className="wacdmg-image-save-error" role="alert">{generatedImage.save_error}</p>
                             )}
                         </div>
                     )}

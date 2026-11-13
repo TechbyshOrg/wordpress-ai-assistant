@@ -1,14 +1,16 @@
 import React, { useState, useRef } from 'react';
 import { callWpApi } from '../../utils/callWpApi';
 import { createGenerationSession, isAbortError } from '../../utils/generationRequest';
-import { imageStylePresets, imageSizes, imageQualities, imageStyles } from '../../utils/variables';
+import { imageStylePresets, imageSizes, imageQualities } from '../../utils/variables';
 import './style.css';
+
+const ADMIN_URL = window?.wacdmgAdmin?.adminUrl || '/wp-admin/';
+const DEFAULT_OPTION = { value: '', label: 'Default (from Settings)' };
 
 const ImageGenerator = () => {
     const [prompt, setPrompt]               = useState('');
-    const [size, setSize]                   = useState('1024x1024');
-    const [quality, setQuality]             = useState('standard');
-    const [style, setStyle]                 = useState('vivid');
+    const [size, setSize]                   = useState('');
+    const [quality, setQuality]             = useState('');
     const [stylePreset, setStylePreset]     = useState('');
     const [loading, setLoading]             = useState(false);
     const [enhancing, setEnhancing]         = useState(false);
@@ -63,7 +65,6 @@ const ImageGenerator = () => {
                 prompt: finalPrompt,
                 size,
                 quality,
-                style,
                 save_to_library: saveToLibrary,
             }, { signal });
 
@@ -76,7 +77,11 @@ const ImageGenerator = () => {
                     timestamp: new Date().toLocaleTimeString(),
                 };
                 setImages(prev => [newImage, ...prev]);
-                setMessage({ text: saveToLibrary ? 'Image generated and saved to Media Library!' : 'Image generated!', type: 'success' });
+                if (response.data.save_error) {
+                    setMessage({ text: response.data.save_error, type: 'error' });
+                } else {
+                    setMessage({ text: response.data.attachment_id ? 'Image generated and saved to Media Library!' : 'Image generated! It is not saved yet — use Download to keep it.', type: 'success' });
+                }
             } else {
                 setMessage({ text: 'Error: ' + (response.data?.message || 'Failed to generate image.'), type: 'error' });
             }
@@ -97,7 +102,7 @@ const ImageGenerator = () => {
             <div className="wacdmg-imggen-controls">
                 <div className="wacdmg-imggen-header">
                     <h2>AI Image Generator</h2>
-                    <p>Generate stunning images powered by DALL-E 3 or FLUX. Configure your image provider in <a href="?page=wacdmg-settings">Settings → Image Generation</a>.</p>
+                    <p>Generate images with OpenAI GPT Image or FLUX. Configure your image provider and model in <a href="?page=wacdmg-settings">Settings → Image Generation</a>.</p>
                 </div>
 
                 <div className="wacdmg-imggen-field">
@@ -130,21 +135,15 @@ const ImageGenerator = () => {
                         </select>
                     </div>
                     <div className="wacdmg-imggen-field">
-                        <label className="wacdmg-imggen-label">Size</label>
-                        <select value={size} onChange={e => setSize(e.target.value)} className="wacdmg-imggen-select">
-                            {imageSizes.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                        <label className="wacdmg-imggen-label" htmlFor="wacdmg-imggen-size">Size</label>
+                        <select id="wacdmg-imggen-size" value={size} onChange={e => setSize(e.target.value)} className="wacdmg-imggen-select">
+                            {[DEFAULT_OPTION, ...imageSizes].map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                         </select>
                     </div>
                     <div className="wacdmg-imggen-field">
-                        <label className="wacdmg-imggen-label">Quality</label>
-                        <select value={quality} onChange={e => setQuality(e.target.value)} className="wacdmg-imggen-select">
-                            {imageQualities.map(q => <option key={q.value} value={q.value}>{q.label}</option>)}
-                        </select>
-                    </div>
-                    <div className="wacdmg-imggen-field">
-                        <label className="wacdmg-imggen-label">Style</label>
-                        <select value={style} onChange={e => setStyle(e.target.value)} className="wacdmg-imggen-select">
-                            {imageStyles.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                        <label className="wacdmg-imggen-label" htmlFor="wacdmg-imggen-quality">Quality</label>
+                        <select id="wacdmg-imggen-quality" value={quality} onChange={e => setQuality(e.target.value)} className="wacdmg-imggen-select">
+                            {[DEFAULT_OPTION, ...imageQualities].map(q => <option key={q.value} value={q.value}>{q.label}</option>)}
                         </select>
                     </div>
                 </div>
@@ -191,12 +190,18 @@ const ImageGenerator = () => {
                                 <div className="wacdmg-imggen-img-wrap">
                                     <img src={img.url} alt={img.prompt} loading="lazy" />
                                     <div className="wacdmg-imggen-overlay">
-                                        <a href={img.url} target="_blank" rel="noopener noreferrer" className="wacdmg-imggen-overlay-btn">
-                                            🔍 View Full
-                                        </a>
+                                        {img.attachment_id ? (
+                                            <a href={img.url} target="_blank" rel="noopener noreferrer" className="wacdmg-imggen-overlay-btn">
+                                                🔍 View Full
+                                            </a>
+                                        ) : (
+                                            <a href={img.url} download={`ai-image-${idx + 1}.png`} className="wacdmg-imggen-overlay-btn">
+                                                ⬇ Download
+                                            </a>
+                                        )}
                                         {img.attachment_id && (
                                             <a
-                                                href={`/wp-admin/upload.php?item=${img.attachment_id}`}
+                                                href={`${ADMIN_URL}upload.php?item=${img.attachment_id}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="wacdmg-imggen-overlay-btn"

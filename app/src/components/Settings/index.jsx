@@ -1,7 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { callWpApi } from '../../utils/callWpApi';
 import './style.css';
-import { providerMeta, imageProviders, imageSizes, imageQualities, imageStyles } from '../../utils/variables';
+import { providerMeta, imageProviders, openaiImageModels, togetherImageModels, imageSizes, imageQualities } from '../../utils/variables';
+
+/**
+ * Keep the saved model selectable even when it is missing from the list,
+ * so the dropdown never silently shows a different model than the one saved.
+ */
+const withSaved = (list, saved) => {
+    if (!saved || list.some(m => m.value === saved)) {
+        return list;
+    }
+    return [{ value: saved, label: saved + ' (saved)' }, ...list];
+};
+
+/**
+ * True when the provider's live list has loaded and does not include the saved model.
+ */
+const isRetired = (liveList, saved) => Array.isArray(liveList) && liveList.length > 0 && !!saved && !liveList.some(m => m.value === saved);
 
 const PROVIDERS = ['chatgpt', 'groq', 'gemini', 'claude', 'mistral', 'openrouter'];
 const TABS = [
@@ -25,12 +41,12 @@ const Settings = () => {
     });
     // Models per provider
     const [models, setModels] = useState({
-        chatgpt: 'gpt-4o',
-        groq: 'llama-3.3-70b-versatile',
-        gemini: 'gemini-3.5-flash',
-        claude: 'claude-sonnet-4-6',
+        chatgpt: 'gpt-5.4-mini',
+        groq: 'openai/gpt-oss-120b',
+        gemini: 'gemini-3.8-flash',
+        claude: 'claude-sonnet-5-5',
         mistral: 'mistral-large-latest',
-        openrouter: 'openai/gpt-4o',
+        openrouter: 'openrouter/auto',
     });
 
     const [providerModels, setProviderModels] = useState({});
@@ -51,11 +67,27 @@ const Settings = () => {
     };
 
     // Image generation settings
-    const [imageProvider, setImageProvider] = useState('dalle');
+    const [imageProvider, setImageProvider] = useState('openai');
+    const [imageModel, setImageModel] = useState('gpt-image-2');
+    const [loadingImageModels, setLoadingImageModels] = useState(false);
     const [togetherKey, setTogetherKey] = useState('');
     const [imageSize, setImageSize] = useState('1024x1024');
-    const [imageQuality, setImageQuality] = useState('standard');
-    const [imageStyle, setImageStyle] = useState('vivid');
+    const [imageQuality, setImageQuality] = useState('medium');
+
+    const [togetherImageModel, setTogetherImageModel] = useState('black-forest-labs/FLUX.2-pro');
+
+    const imageModelOptions = withSaved(providerModels.openai_image || openaiImageModels, imageModel);
+    const togetherModelOptions = withSaved(providerModels.together_image || togetherImageModels, togetherImageModel);
+
+    const refreshImageModels = async () => {
+        setLoadingImageModels(true);
+        if (imageProvider === 'together') {
+            await fetchProviderModels('together_image', togetherKey);
+        } else {
+            await fetchProviderModels('openai_image', apiKeys.chatgpt);
+        }
+        setLoadingImageModels(false);
+    };
 
     // SEO settings
     const [seoIntegration, setSeoIntegration] = useState('auto');
@@ -63,6 +95,7 @@ const Settings = () => {
 
     // Usage limits
     const [rateLimitDay, setRateLimitDay] = useState(100);
+    const [keepDataOnUninstall, setKeepDataOnUninstall] = useState(false);
     const [usage, setUsage] = useState(null);
 
     const [testingProvider, setTestingProvider] = useState(null);
@@ -117,12 +150,17 @@ const Settings = () => {
                     const activeProv = d.provider || 'chatgpt';
                     if (d.provider) setProvider(activeProv);
                     if (d.image_provider) setImageProvider(d.image_provider);
+                    if (d.image_model) setImageModel(d.image_model);
+                    if (d.together_image_model) setTogetherImageModel(d.together_image_model);
                     if (d.image_size) setImageSize(d.image_size);
                     if (d.image_quality) setImageQuality(d.image_quality);
-                    if (d.image_style) setImageStyle(d.image_style);
                     if (d.seo_integration) setSeoIntegration(d.seo_integration);
                     if (d.auto_seo_on_publish !== undefined) setAutoSeoOnPublish(d.auto_seo_on_publish);
-                    if (d.rate_limit_day) setRateLimitDay(d.rate_limit_day);
+                    // 0 is a valid value (no limit), so check for presence rather than truthiness.
+                    if (d.rate_limit_day !== undefined && d.rate_limit_day !== null) {
+                        setRateLimitDay(Math.max(0, parseInt(d.rate_limit_day, 10) || 0));
+                    }
+                    setKeepDataOnUninstall(!!d.keep_data_on_uninstall);
                     if (d.model) {
                         setModels(prev => ({ ...prev, [activeProv]: d.model }));
                     }
@@ -172,13 +210,15 @@ const Settings = () => {
             mistralKey: apiKeys.mistral,
             openrouterKey: apiKeys.openrouter,
             imageProvider,
+            imageModel,
+            togetherImageModel,
             togetherKey,
             imageSize,
             imageQuality,
-            imageStyle,
             seoIntegration,
             autoSeoOnPublish,
             rateLimitDay,
+            keepDataOnUninstall,
         };
 
         try {
@@ -314,16 +354,22 @@ const Settings = () => {
                                     </div>
 
                                     <div className="wacdmg-field-group">
-                                        <label className="wacdmg-field-label">Model</label>
+                                        <label className="wacdmg-field-label" htmlFor={`wacdmg-model-${p}`}>Model</label>
                                         <select
+                                            id={`wacdmg-model-${p}`}
                                             value={models[p]}
                                             onChange={e => setModels(prev => ({ ...prev, [p]: e.target.value }))}
                                             className="wacdmg-select"
                                         >
-                                            {(providerModels[p] || providerMeta[p].models).map(m => (
+                                            {withSaved(providerModels[p] || providerMeta[p].models, models[p]).map(m => (
                                                 <option key={m.value} value={m.value}>{m.label}</option>
                                             ))}
                                         </select>
+                                        {isRetired(providerModels[p], models[p]) && (
+                                            <p className="wacdmg-model-warning" role="alert">
+                                                "{models[p]}" is not in {providerMeta[p].label}'s current model list. It may have been retired — choose another model and save.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -338,11 +384,11 @@ const Settings = () => {
                     <div className="wacdmg-tab-content">
                         <div className="wacdmg-section-header">
                             <h2>Image Generation</h2>
-                            <p>Configure AI image generation. DALL-E 3 uses your OpenAI key. Together.ai requires a separate key.</p>
+                            <p>Configure AI image generation. OpenAI GPT Image uses your OpenAI key. Together.ai requires a separate key.</p>
                         </div>
 
                         <div className="wacdmg-notice wacdmg-notice-warning">
-                            <strong>Cost notice:</strong> AI image generation incurs API charges per image. DALL-E 3 standard costs approximately $0.04/image. Monitor usage in the Usage & Limits tab.
+                            <strong>Cost notice:</strong> AI image generation is billed per image by your provider. Cost depends on the model, size, and quality — check your provider's pricing page. Monitor usage in the Usage & Limits tab.
                         </div>
 
                         <div className="wacdmg-field-group">
@@ -405,27 +451,55 @@ const Settings = () => {
 
                         <div className="wacdmg-fields-row">
                             <div className="wacdmg-field-group">
-                                <label className="wacdmg-field-label">Default Size</label>
-                                <select value={imageSize} onChange={e => setImageSize(e.target.value)} className="wacdmg-select">
+                                <label className="wacdmg-field-label" htmlFor="wacdmg-image-size">Default Size</label>
+                                <select id="wacdmg-image-size" value={imageSize} onChange={e => setImageSize(e.target.value)} className="wacdmg-select">
                                     {imageSizes.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                                 </select>
                             </div>
-                            {imageProvider === 'dalle' && (
-                                <>
-                                    <div className="wacdmg-field-group">
-                                        <label className="wacdmg-field-label">Quality</label>
-                                        <select value={imageQuality} onChange={e => setImageQuality(e.target.value)} className="wacdmg-select">
-                                            {imageQualities.map(q => <option key={q.value} value={q.value}>{q.label}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="wacdmg-field-group">
-                                        <label className="wacdmg-field-label">Style</label>
-                                        <select value={imageStyle} onChange={e => setImageStyle(e.target.value)} className="wacdmg-select">
-                                            {imageStyles.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                                        </select>
-                                    </div>
-                                </>
+                            {imageProvider === 'openai' && (
+                                <div className="wacdmg-field-group">
+                                    <label className="wacdmg-field-label" htmlFor="wacdmg-image-quality">Default Quality</label>
+                                    <select id="wacdmg-image-quality" value={imageQuality} onChange={e => setImageQuality(e.target.value)} className="wacdmg-select">
+                                        {imageQualities.map(q => <option key={q.value} value={q.value}>{q.label}</option>)}
+                                    </select>
+                                </div>
                             )}
+                        </div>
+
+                        <div className="wacdmg-field-group">
+                            <label className="wacdmg-field-label" htmlFor="wacdmg-image-model">Image Model</label>
+                            <div className="wacdmg-key-input-wrap">
+                                {imageProvider === 'together' ? (
+                                    <select id="wacdmg-image-model" value={togetherImageModel} onChange={e => setTogetherImageModel(e.target.value)} className="wacdmg-select">
+                                        {togetherModelOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </select>
+                                ) : (
+                                    <select id="wacdmg-image-model" value={imageModel} onChange={e => setImageModel(e.target.value)} className="wacdmg-select">
+                                        {imageModelOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </select>
+                                )}
+                                <button
+                                    type="button"
+                                    className="wacdmg-btn wacdmg-btn-outline wacdmg-test-key-btn"
+                                    onClick={refreshImageModels}
+                                    disabled={loadingImageModels}
+                                >
+                                    {loadingImageModels ? 'Loading...' : 'Refresh list'}
+                                </button>
+                            </div>
+                            {imageProvider === 'together'
+                                ? isRetired(providerModels.together_image, togetherImageModel) && (
+                                    <p className="wacdmg-model-warning" role="alert">"{togetherImageModel}" is not in Together.ai's current image models. Choose another and save.</p>
+                                )
+                                : isRetired(providerModels.openai_image, imageModel) && (
+                                    <p className="wacdmg-model-warning" role="alert">"{imageModel}" is not in your OpenAI account's image models. Choose another and save.</p>
+                                )}
+                            <p className="description">
+                                {imageProvider === 'together'
+                                    ? 'Refresh to load the image models your Together.ai key can use.'
+                                    : 'Refresh to load the GPT Image models your OpenAI key can use.'}
+                                {' '}Save settings after changing the model.
+                            </p>
                         </div>
                     </div>
                 )}
@@ -476,6 +550,9 @@ const Settings = () => {
                                 <span className="wacdmg-toggle-track"></span>
                                 Auto-generate SEO meta on post publish (if meta is empty)
                             </label>
+                            <p className="description">
+                                Runs in the background shortly after publishing, for posts, pages, products, and other public content types. Uses one AI request per post and counts toward the daily limit.
+                            </p>
                         </div>
 
                         <div className="wacdmg-notice wacdmg-notice-info">
@@ -514,18 +591,22 @@ const Settings = () => {
                         </div>
 
                         <div className="wacdmg-field-group" style={{ marginTop: '24px' }}>
-                            <label className="wacdmg-field-label">Daily Rate Limit</label>
+                            <label className="wacdmg-field-label" htmlFor="wacdmg-rate-limit">Daily Rate Limit</label>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <input
+                                    id="wacdmg-rate-limit"
                                     type="number"
                                     value={rateLimitDay}
-                                    onChange={e => setRateLimitDay(parseInt(e.target.value) || 100)}
+                                    onChange={e => {
+                                        const n = parseInt(e.target.value, 10);
+                                        setRateLimitDay(Number.isNaN(n) ? 0 : Math.min(10000, Math.max(0, n)));
+                                    }}
                                     className="wacdmg-input"
                                     style={{ width: '120px' }}
-                                    min="1"
+                                    min="0"
                                     max="10000"
                                 />
-                                <span style={{ color: '#666', fontSize: '13px' }}>generations per day</span>
+                                <span style={{ color: '#646970', fontSize: '13px' }}>generations per day (0 = no limit)</span>
                             </div>
                         </div>
 
@@ -537,6 +618,24 @@ const Settings = () => {
                         >
                             Reset Usage Statistics
                         </button>
+
+                        <div className="wacdmg-toggle-group" style={{ marginTop: '24px' }}>
+                            <label className="wacdmg-toggle-label">
+                                <input
+                                    type="checkbox"
+                                    checked={keepDataOnUninstall}
+                                    onChange={e => setKeepDataOnUninstall(e.target.checked)}
+                                    className="wacdmg-toggle-input"
+                                />
+                                <span className="wacdmg-toggle-track"></span>
+                                Keep settings and custom templates when the plugin is deleted
+                            </label>
+                            <p className="description">
+                                When the plugin is deleted, saved API keys and the usage log are always removed.
+                                Turn this on to keep your other settings and custom templates for a later reinstall.
+                                Content and SEO meta written to your posts are never removed.
+                            </p>
+                        </div>
                     </div>
                 )}
 

@@ -11,6 +11,7 @@ import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
 import { createGenerationSession, isAbortError } from '../utils/generationRequest';
 import PostPromptGenerator from '../utils/PromptGenerator';
+import { sanitizeAiHtml } from '../utils/sanitizeHtml';
 
 const BLOCK_ATTR = {
     'core/heading': 'content',
@@ -98,7 +99,7 @@ function addTextBlockInspector(BlockEdit) {
                     language,
                 }, { signal });
                 if (response.success) {
-                    const value = response.data.description || response.data.content || '';
+                    const value = sanitizeAiHtml(response.data.description || response.data.content || '');
                     setAttributes({ [attrKey]: value });
                     setNotice({ text: __('Content generated.', 'wacdmg-ai-content-assistant'), status: 'success' });
                 } else {

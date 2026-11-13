@@ -6,13 +6,14 @@
  */
 import { registerPlugin } from '@wordpress/plugins';
 import { useState, useRef } from '@wordpress/element';
-import { useSelect } from '@wordpress/data';
+import { useSelect, select as selectStore } from '@wordpress/data';
 import { Button, TextControl, TextareaControl, Notice, Spinner } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
 import { createGenerationSession, isAbortError } from '../utils/generationRequest';
 import PostPromptGenerator from '../utils/PromptGenerator';
 import { getPluginDocumentSettingPanel } from '../utils/documentPanel';
+import { htmlToText } from '../utils/sanitizeHtml';
 
 const PluginDocumentSettingPanel = getPluginDocumentSettingPanel();
 
@@ -26,13 +27,11 @@ const AISeoPanel = () => {
 
     const postTitle   = useSelect(select => select('core/editor').getEditedPostAttribute('title') || '');
     const postId      = useSelect(select => select('core/editor').getCurrentPostId());
-    const postContent = useSelect(select => {
-        const content = select('core/editor').getEditedPostAttribute('content') || '';
-        // Strip HTML and truncate
-        const tmp = document.createElement('div');
-        tmp.innerHTML = content;
-        return tmp.textContent?.substring(0, 500) || '';
-    });
+    // Read the content only when generating, so typing in the editor does not re-parse the whole post.
+    const readPostContent = () => {
+        const content = selectStore('core/editor').getEditedPostAttribute('content') || '';
+        return htmlToText(content).substring(0, 500);
+    };
 
     const seoPlugins = window.wacdmgAdmin?.seoPlugins || [];
 
@@ -47,6 +46,7 @@ const AISeoPanel = () => {
         const signal = genSession.start();
 
         const generator = new PostPromptGenerator({ tone: 'professional', language: 'English' });
+        const postContent = readPostContent();
 
         try {
             const response = await callWpApi('/generate-seo-meta', 'POST', {

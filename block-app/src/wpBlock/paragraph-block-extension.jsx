@@ -15,6 +15,7 @@ import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
 import { createGenerationSession, isAbortError } from '../utils/generationRequest';
 import PostPromptGenerator from '../utils/PromptGenerator';
+import { sanitizeAiHtml } from '../utils/sanitizeHtml';
 
 const TONE_OPTIONS = [
     { label: 'Persuasive', value: 'persuasive' },
@@ -162,9 +163,10 @@ function addCustomInspectorControls(BlockEdit) {
                 }, { signal });
 
                 if (response.success) {
+                    const safeContent = sanitizeAiHtml(response.data.description || response.data.content || '');
                     setAttributes({
-                        generatedContent: response.data.description || response.data.content || '',
-                        content: response.data.description || response.data.content || '',
+                        generatedContent: safeContent,
+                        content: safeContent,
                     });
                     setNotice({ text: __('Content generated successfully!', 'wacdmg-ai-content-assistant'), status: 'success' });
                 } else {

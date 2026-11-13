@@ -34,6 +34,31 @@ class WACDMG_Admin {
         add_filter( 'attachment_fields_to_edit', array( $this, 'wacdmg_attachment_alt_field' ), 10, 2 );
         add_filter( 'bulk_actions-edit-product', array( $this, 'wacdmg_register_product_bulk_action' ) );
         add_filter( 'handle_bulk_actions-edit-product', array( $this, 'wacdmg_handle_product_bulk_action' ), 10, 3 );
+        add_action( 'admin_init', array( $this, 'wacdmg_add_privacy_policy_content' ) );
+    }
+
+    /**
+     * Suggest privacy policy text (Settings → Privacy → Policy Guide).
+     *
+     * The plugin collects nothing from site visitors. It only sends content that logged-in
+     * staff choose to generate from to the AI provider configured in Settings.
+     */
+    public function wacdmg_add_privacy_policy_content() {
+        if ( ! function_exists( 'wp_add_privacy_policy_content' ) ) {
+            return;
+        }
+
+        $content = '<p class="privacy-policy-tutorial">'
+            . esc_html__( 'AI Content & Meta Assistant does not collect data from site visitors and sets no cookies. The text below describes how site staff use AI services; review it and keep only what applies to your site.', 'wacdmg-ai-content-assistant' )
+            . '</p>'
+            . '<p><strong class="privacy-policy-tutorial">' . esc_html__( 'Suggested text:', 'wacdmg-ai-content-assistant' ) . ' </strong>'
+            . esc_html__( 'We use third-party artificial intelligence (AI) services to help write and edit content on this website, such as product descriptions, page text, image descriptions, and search engine metadata. When our staff use these tools, the content being worked on (for example a product name, existing text, or an image from our media library) is sent to the AI provider we have chosen to generate a suggestion. We do not send visitor or customer personal data, such as order details, to these services. The providers we may use include OpenAI, Google (Gemini), Anthropic (Claude), Mistral AI, Groq, OpenRouter, and Together AI, each under its own privacy policy.', 'wacdmg-ai-content-assistant' )
+            . '</p>';
+
+        wp_add_privacy_policy_content(
+            __( 'AI Content & Meta Assistant', 'wacdmg-ai-content-assistant' ),
+            wp_kses_post( $content )
+        );
     }
 
     /**
@@ -215,6 +240,7 @@ class WACDMG_Admin {
             'currentPage'      => $current_page,
             'seoPlugins'       => $seo_plugins,
             'pluginUrl'        => WACDMG_PLUGIN_URL,
+            'adminUrl'         => admin_url(),
             'wpDate'           => current_time( 'Y-m-d' ),
             'wpMonth'          => current_time( 'Y-m' ),
             'taxonomy'         => $taxonomy,
@@ -226,6 +252,7 @@ class WACDMG_Admin {
             'hasPolylang'      => function_exists( 'pll_get_post' ),
             'hasYikesTabs'     => class_exists( 'YIKES_Custom_Product_Tabs' ) || defined( 'YIKES_CUSTOM_PRODUCT_TABS_VERSION' ),
             'translationLangs' => $this->wacdmg_get_translation_languages(),
+            'defaultLanguage'  => $this->wacdmg_get_writing_languages()['default'],
         ) );
     }
 
@@ -336,6 +363,54 @@ class WACDMG_Admin {
             $plugins[] = 'aioseo';
         }
         return $plugins;
+    }
+
+    /**
+     * Languages offered in the field assistant, plus the site's default.
+     *
+     * The site language is always included, even when it is not one of the built-in names,
+     * so non-English sites default to their own language.
+     *
+     * @return array { languages: string[], default: string }
+     */
+    private function wacdmg_get_writing_languages() {
+        $map = array(
+            'en' => 'English',
+            'es' => 'Spanish',
+            'fr' => 'French',
+            'de' => 'German',
+            'it' => 'Italian',
+            'pt' => 'Portuguese',
+            'nl' => 'Dutch',
+            'ar' => 'Arabic',
+            'hi' => 'Hindi',
+            'ja' => 'Japanese',
+            'zh' => 'Chinese (Simplified)',
+            'ko' => 'Korean',
+            'ru' => 'Russian',
+            'tr' => 'Turkish',
+            'pl' => 'Polish',
+        );
+
+        $locale    = get_locale();
+        $prefix    = strtolower( substr( $locale, 0, 2 ) );
+        $languages = array_values( $map );
+        $default   = isset( $map[ $prefix ] ) ? $map[ $prefix ] : '';
+
+        if ( '' === $default ) {
+            // Use WordPress's cached language list only; never trigger a remote request on page load.
+            // AI models understand locale codes (e.g. "sv_SE") when no name is cached.
+            $translations = get_site_transient( 'available_translations' );
+            $default      = ( is_array( $translations ) && ! empty( $translations[ $locale ]['english_name'] ) )
+                ? $translations[ $locale ]['english_name']
+                : $locale;
+            array_unshift( $languages, $default );
+        }
+
+        return array(
+            'languages' => $languages,
+            'default'   => $default,
+        );
     }
 
     /**
@@ -462,20 +537,33 @@ class WACDMG_Admin {
             WACDMG_PLUGIN_VERSION
         );
 
+        // DOMPurify (MPL-2.0 OR Apache-2.0), used to sanitize AI-generated HTML before it reaches an editor.
+        wp_register_script(
+            'wacdmg-dompurify',
+            WACDMG_PLUGIN_URL . 'assets/js/lib/purify.min.js',
+            array(),
+            '3.4.17',
+            true
+        );
+
         wp_enqueue_script(
             'wacdmg-field-assistant',
             WACDMG_PLUGIN_URL . 'assets/js/field-assistant.js',
-            array(),
+            array( 'wacdmg-dompurify' ),
             WACDMG_PLUGIN_VERSION,
             true
         );
+
+        $writing = $this->wacdmg_get_writing_languages();
 
         wp_localize_script(
             'wacdmg-field-assistant',
             'wacdmgFieldAssistant',
             array(
-                'apiBaseUrl' => esc_url_raw( $api_base_url ),
-                'restNonce'  => wp_create_nonce( 'wp_rest' ),
+                'apiBaseUrl'      => esc_url_raw( $api_base_url ),
+                'restNonce'       => wp_create_nonce( 'wp_rest' ),
+                'languages'       => $writing['languages'],
+                'defaultLanguage' => $writing['default'],
             )
         );
     }
@@ -552,12 +640,14 @@ class WACDMG_Admin {
             'apiBaseUrl'       => esc_url_raw( $api_base_url ),
             'seoPlugins'       => $seo_plugins,
             'pluginUrl'        => WACDMG_PLUGIN_URL,
+            'adminUrl'         => admin_url(),
             'wpDate'           => current_time( 'Y-m-d' ),
             'wpMonth'          => current_time( 'Y-m' ),
             'hasBrands'        => taxonomy_exists( 'product_brand' ),
             'hasWpml'          => defined( 'ICL_SITEPRESS_VERSION' ),
             'hasPolylang'      => function_exists( 'pll_get_post' ),
             'translationLangs' => $this->wacdmg_get_translation_languages(),
+            'defaultLanguage'  => $this->wacdmg_get_writing_languages()['default'],
         ) );
     }
 

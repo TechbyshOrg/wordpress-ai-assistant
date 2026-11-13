@@ -19,6 +19,20 @@
     word-break: break-word;
 }
 
+.wacdmg-bulk-field {
+    margin-bottom: 6px;
+}
+
+.wacdmg-bulk-field input[type="checkbox"] {
+    margin: 1px 6px 0 0;
+    vertical-align: top;
+}
+
+.wacdmg-bulk-current {
+    margin: 2px 0 0 24px;
+    color: #646970;
+}
+
 .wacdmg-field-ai-row {
     margin: 8px 0;
 }
@@ -26,6 +40,13 @@
 .wacdmg-field-ai-row .wacdmg-field-ai {
     margin-right: 4px;
     margin-bottom: 4px;
+}
+
+.wacdmg-field-ai-row .wacdmg-field-ai-lang {
+    margin: 0 4px 4px 0;
+    min-height: 30px;
+    max-width: 180px;
+    vertical-align: top;
 }
 
 .wacdmg-field-ai-status {

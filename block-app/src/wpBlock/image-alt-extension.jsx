@@ -1,19 +1,30 @@
 /**
  * AI Alt Text — Gutenberg image block inspector.
+ *
+ * The server sends the image itself to a vision model. Results are placed in the
+ * block for review; nothing is saved until the post is saved.
  */
 import { addFilter } from '@wordpress/hooks';
 import { Fragment, useRef, useState } from '@wordpress/element';
+import { select } from '@wordpress/data';
 import { InspectorControls } from '@wordpress/block-editor';
 import { PanelBody, Button, Notice } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
 import { createGenerationSession, isAbortError } from '../utils/generationRequest';
 
+function currentPostTitle() {
+    try {
+        return select('core/editor')?.getEditedPostAttribute('title') || '';
+    } catch (e) {
+        return '';
+    }
+}
+
 function addImageAltControls(BlockEdit) {
     return function ImageAltControls(props) {
         const { attributes, setAttributes, name } = props;
-        const [generating, setGenerating] = useState(false);
-        const [captionLoading, setCaptionLoading] = useState(false);
+        const [loadingTarget, setLoadingTarget] = useState('');
         const [notice, setNotice] = useState({ text: '', status: '' });
         const genSession = useRef(createGenerationSession()).current;
 
@@ -21,30 +32,33 @@ function addImageAltControls(BlockEdit) {
             return <BlockEdit {...props} />;
         }
 
-        const { id, alt, url } = attributes;
+        const { id } = attributes;
+        const busy = loadingTarget !== '';
 
-        const handleGenerate = async () => {
+        const generate = async (target) => {
             const signal = genSession.start();
-            setGenerating(true);
+            setLoadingTarget(target);
             setNotice({ text: '', status: '' });
-
-            const prompt = `Write concise, descriptive alt text for this image.`
-                + (alt ? ` Current alt: "${alt}".` : '')
-                + (url ? ` Image URL: ${url}.` : '')
-                + ` Under 125 characters. Return only the alt text as plain text.`;
 
             try {
                 const response = await callWpApi('/generate-alt-text', 'POST', {
-                    prompt,
-                    attachment_id: id || 0,
+                    attachment_id: id,
+                    target,
+                    context: currentPostTitle(),
                 }, { signal });
 
-                if (response.success && response.data?.alt_text) {
-                    setAttributes({ alt: response.data.alt_text });
-                    setNotice({ text: __('Alt text generated.', 'wacdmg-ai-content-assistant'), status: 'success' });
+                const text = target === 'caption' ? response.data?.caption : response.data?.alt_text;
+                if (response.success && text) {
+                    setAttributes(target === 'caption' ? { caption: text } : { alt: text });
+                    setNotice({
+                        text: target === 'caption'
+                            ? __('Caption added. Review it before saving.', 'wacdmg-ai-content-assistant')
+                            : __('Alt text added. Review it before saving.', 'wacdmg-ai-content-assistant'),
+                        status: 'success',
+                    });
                 } else {
                     setNotice({
-                        text: response.data?.message || __('Failed to generate alt text.', 'wacdmg-ai-content-assistant'),
+                        text: response.data?.message || __('Generation failed.', 'wacdmg-ai-content-assistant'),
                         status: 'error',
                     });
                 }
@@ -54,7 +68,7 @@ function addImageAltControls(BlockEdit) {
                 }
             } finally {
                 if (genSession.settle(signal)) {
-                    setGenerating(false);
+                    setLoadingTarget('');
                 }
             }
         };
@@ -63,23 +77,39 @@ function addImageAltControls(BlockEdit) {
             <Fragment>
                 <InspectorControls>
                     <PanelBody title={__('AI Alt Text', 'wacdmg-ai-content-assistant')} initialOpen={false}>
+                        {!id && (
+                            <p className="components-base-control__help">
+                                {__('AI alt text needs an image from the Media Library. Images inserted from a URL cannot be read.', 'wacdmg-ai-content-assistant')}
+                            </p>
+                        )}
                         <Button
                             variant="secondary"
-                            onClick={handleGenerate}
-                            isBusy={generating}
-                            disabled={generating}
+                            onClick={() => generate('alt')}
+                            isBusy={loadingTarget === 'alt'}
+                            disabled={!id || busy}
                         >
-                            {generating
-                                ? __('Generating...', 'wacdmg-ai-content-assistant')
+                            {loadingTarget === 'alt'
+                                ? __('Looking at the image...', 'wacdmg-ai-content-assistant')
                                 : __('Generate Alt Text', 'wacdmg-ai-content-assistant')}
                         </Button>
-                        {generating && (
+                        <Button
+                            variant="secondary"
+                            onClick={() => generate('caption')}
+                            isBusy={loadingTarget === 'caption'}
+                            disabled={!id || busy}
+                            style={{ marginTop: '8px' }}
+                        >
+                            {loadingTarget === 'caption'
+                                ? __('Looking at the image...', 'wacdmg-ai-content-assistant')
+                                : __('Generate Caption', 'wacdmg-ai-content-assistant')}
+                        </Button>
+                        {busy && (
                             <Button
                                 variant="tertiary"
                                 isSmall
                                 onClick={() => {
                                     genSession.cancel();
-                                    setGenerating(false);
+                                    setLoadingTarget('');
                                 }}
                                 style={{ marginTop: '8px' }}
                             >
@@ -87,55 +117,12 @@ function addImageAltControls(BlockEdit) {
                             </Button>
                         )}
                         {notice.text && (
-                            <div style={{ marginTop: '10px' }}>
+                            <div style={{ marginTop: '10px' }} aria-live="polite">
                                 <Notice status={notice.status === 'success' ? 'success' : 'error'} isDismissible={false}>
                                     {notice.text}
                                 </Notice>
                             </div>
                         )}
-                        <Button
-                            variant="secondary"
-                            onClick={async () => {
-                                const signal = genSession.start();
-                                setCaptionLoading(true);
-                                setNotice({ text: '', status: '' });
-                                const prompt = `Write a concise image caption.`
-                                    + (alt ? ` Alt text: "${alt}".` : '')
-                                    + (url ? ` Image URL: ${url}.` : '')
-                                    + ` One or two sentences. Return only the caption as plain text.`;
-                                try {
-                                    const response = await callWpApi('/generate-alt-text', 'POST', {
-                                        prompt,
-                                        attachment_id: id || 0,
-                                        target: 'caption',
-                                    }, { signal });
-                                    if (response.success && response.data?.caption) {
-                                        setAttributes({ caption: response.data.caption });
-                                        setNotice({ text: __('Caption generated.', 'wacdmg-ai-content-assistant'), status: 'success' });
-                                    } else {
-                                        setNotice({
-                                            text: response.data?.message || __('Failed to generate caption.', 'wacdmg-ai-content-assistant'),
-                                            status: 'error',
-                                        });
-                                    }
-                                } catch (error) {
-                                    if (!isAbortError(error)) {
-                                        setNotice({ text: error.message || __('Network error.', 'wacdmg-ai-content-assistant'), status: 'error' });
-                                    }
-                                } finally {
-                                    if (genSession.settle(signal)) {
-                                        setCaptionLoading(false);
-                                    }
-                                }
-                            }}
-                            isBusy={captionLoading}
-                            disabled={generating || captionLoading}
-                            style={{ marginTop: '8px' }}
-                        >
-                            {captionLoading
-                                ? __('Generating...', 'wacdmg-ai-content-assistant')
-                                : __('Generate Caption', 'wacdmg-ai-content-assistant')}
-                        </Button>
                     </PanelBody>
                 </InspectorControls>
                 <BlockEdit {...props} />

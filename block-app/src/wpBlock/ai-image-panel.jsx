@@ -62,6 +62,10 @@ const AIImagePanel = () => {
             if (response.success) {
                 setGeneratedUrl(response.data.url);
                 setAttachmentId(response.data.attachment_id);
+                if (response.data.save_error) {
+                    setNotice({ text: response.data.save_error, status: 'error' });
+                    return;
+                }
                 const savedMsg = saveToLib
                     ? setFeatured
                         ? __('Image generated and set as Featured Image!', 'wacdmg-ai-content-assistant')
@@ -163,7 +167,7 @@ const AIImagePanel = () => {
                     />
                     {attachmentId && (
                         <a
-                            href={`${window.location.origin}/wp-admin/upload.php?item=${attachmentId}`}
+                            href={`${window.wacdmgAdmin?.adminUrl || '/wp-admin/'}upload.php?item=${attachmentId}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ fontSize: '11px', display: 'block', marginTop: '6px', color: '#2271b1' }}

@@ -9,6 +9,7 @@ import { __ } from '@wordpress/i18n';
 import { callWpApi } from '../utils/callWpApi';
 import { createGenerationSession, isAbortError } from '../utils/generationRequest';
 import { getPluginDocumentSettingPanel } from '../utils/documentPanel';
+import { sanitizeAiHtml, htmlToText } from '../utils/sanitizeHtml';
 import PostPromptGenerator from '../utils/PromptGenerator';
 
 const PluginDocumentSettingPanel = getPluginDocumentSettingPanel();
@@ -36,9 +37,7 @@ const LANGUAGE_OPTIONS = [
 ];
 
 function stripHtml(html) {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html || '';
-    return tmp.textContent || '';
+    return htmlToText(html);
 }
 
 function fillTemplatePlaceholders(prompt, { title = '', content = '' } = {}) {
@@ -48,7 +47,8 @@ function fillTemplatePlaceholders(prompt, { title = '', content = '' } = {}) {
         .replace(/\[CONTENT\]/gi, content);
 }
 
-function writeDescriptionHtml(html, editPost) {
+function writeDescriptionHtml(rawHtml, editPost) {
+    const html = sanitizeAiHtml(rawHtml);
     const blockEditor = window.wp?.data?.dispatch('core/block-editor');
     if (blockEditor && typeof blockEditor.resetBlocks === 'function' && window.wp?.blocks?.rawHandler) {
         const blocks = window.wp.blocks.rawHandler({ HTML: html });
@@ -367,9 +367,10 @@ const ProductAiPanel = () => {
                         let filled = 0;
                         for (const attachmentId of emptyGalleryAlts.slice(0, 10)) {
                             const response = await callWpApi('/generate-alt-text', 'POST', {
-                                prompt: 'Write concise, descriptive alt text for this WordPress product gallery image. Under 125 characters. Return only the alt text as plain text.',
                                 attachment_id: attachmentId,
+                                context: title,
                                 skip_if_filled: true,
+                                save: true,
                             }, { signal });
                             if (response.success && !response.data?.skipped) {
                                 filled += 1;

@@ -420,6 +420,13 @@
     font-weight: 500;
 }
 
+.wacdmg-image-save-error {
+    font-size: 12px;
+    color: #b32d2e;
+    margin: 8px 0 0;
+    font-weight: 500;
+}
+
 .wacdmg-gap-list {
     display: flex;
     flex-wrap: wrap;

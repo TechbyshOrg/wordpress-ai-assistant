@@ -5,7 +5,7 @@ Tags: woocommerce, chatgpt, seo, openai, ai
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.1.0
+Stable tag: 2.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -36,7 +36,7 @@ There is no plugin subscription. You only pay the AI provider for the tokens or 
 
 Pick the provider that fits your budget and quality needs:
 
-* OpenAI ChatGPT, including DALL-E 3 for images
+* OpenAI ChatGPT, including GPT Image models for images
 * Google Gemini
 * Anthropic Claude
 * Mistral AI
@@ -50,7 +50,7 @@ The plugin can load the live model list from your provider. If the request fails
 
 On the product editor you can generate a full description, a short description for archive pages, tags, categories, attributes, and SEO meta from the product title. You can also generate a product image, save it to the Media Library, and set it as the featured image.
 
-Need to fill gaps across several products? On **Products → All products**, use the bulk action **AI fill empty content**. The plugin only targets empty or thin fields, shows a preview, and waits for you to apply. Existing content is not overwritten, and images are skipped in bulk fill.
+Need to fill gaps across several products? On **Products → All products**, use the bulk action **AI fill empty content**. The plugin fills empty fields, shows a preview with a checkbox per field, and waits for you to apply. Short existing descriptions can be expanded, but they are only replaced if you tick them. Images are skipped in bulk fill.
 
 = Posts, pages, and editors =
 
@@ -77,7 +77,7 @@ If none of those plugins is active, values are stored in custom meta fields. Ope
 
 = Images =
 
-Describe the image you want, optionally enhance the prompt, and generate with DALL-E 3 or Together.ai. Save results to the Media Library. A standalone **Image Generator** page is available under **AI Assistant** for banners, product photos, and blog graphics.
+Describe the image you want, optionally enhance the prompt, and generate with OpenAI GPT Image (choose the model in Settings) or Together.ai. Save results to the Media Library. A standalone **Image Generator** page is available under **AI Assistant** for banners, product photos, and blog graphics.
 
 = Content templates =
 
@@ -88,6 +88,7 @@ Save prompt patterns and reuse them with placeholders such as `[TITLE]`, `[PRODU
 * Set a daily generation limit under **AI Assistant → Settings → Usage & Limits**
 * Review totals and recent activity on the **Usage Log** page
 * API keys stay in your WordPress database (`wacdmg_ai_creds`) and are sent only to the provider you configured
+* Deleting the plugin removes saved API keys and the usage log; settings and custom templates are removed too unless you choose to keep them (Settings → Usage & Limits)
 
 WordPress.org currently recommends PHP 8.3 or greater for new sites. This plugin still runs on PHP 7.4+ so older but still common hosts keep working.
 
@@ -152,11 +153,11 @@ SEO titles, descriptions, and keywords are written to the detected plugin fields
 
 = How does WooCommerce bulk fill work? =
 
-Select products in **Products → All products**, choose **AI fill empty content**, and review the Bulk Fill screen. Only empty or thin fields are generated. You preview each product and click Apply. Images are not generated in this flow. Up to 20 products can be processed in one selection.
+Select products in **Products → All products**, choose **AI fill empty content**, and review the Bulk Fill screen. Empty fields are generated and ticked; short descriptions are expanded from their current text but left unticked. Review the fields, then Apply one product or all reviewed products. Images are not generated in this flow. Up to 20 products can be processed in one selection.
 
 = Does bulk fill replace descriptions I already wrote? =
 
-No. It is designed to fill gaps. Review the preview before you apply.
+Not unless you choose to. Empty fields are filled automatically after you click Apply. A short existing description (under about 160 characters) is expanded from its own text and shown next to the current version, unticked; it is only replaced if you tick it. Existing short descriptions and SEO meta are never overwritten by bulk fill.
 
 = Can I generate content in other languages? =
 
@@ -209,6 +210,41 @@ You can prompt it, but you should not treat generated legal, medical, or complia
 
 == Changelog ==
 
+= 2.1.1 =
+* Fix: Image generation works again. OpenAI retired DALL-E 3 on 12 May 2026, so images now use GPT Image models (default gpt-image-2). Choose or refresh the model under Settings → Image Generation.
+* Fix: Saved default image size and quality are now used by the editor panels.
+* Fix: Selecting Together.ai without a key now shows a clear error instead of silently using OpenAI.
+* Fix: Unsaved image previews no longer expire, and Media Library links work on sites installed in a subdirectory.
+* Improvement: Generated images are saved with a file type detected from the image itself, and a save failure is reported instead of being ignored.
+* Fix: Auto-generate SEO on publish now runs only for public content (posts, pages, products, public custom post types) and no longer fires for menu items, reusable blocks, navigation menus, templates, or imports.
+* Fix: Auto-generate SEO on publish now works for scheduled posts.
+* Improvement: Auto-generate SEO on publish runs in the background (Action Scheduler or WP-Cron), so publishing no longer waits on the AI provider, and it uses one AI request per post instead of three. Developers can change the post types with the wacdmg_auto_seo_post_types filter.
+* Fix: AI alt text and captions now come from the image itself. The image is sent to your vision-capable model (OpenAI, Claude, Gemini, Mistral, Groq, or OpenRouter) instead of guessing from the file name, and the plugin shows a clear message if the image cannot be read or the model does not support images.
+* Improvement: Generated alt text and captions are placed in the field for you to review instead of being saved automatically. Bulk gallery alt fill still saves directly and skips images that already have alt text.
+* Improvement: Alt text and captions are written in your site language.
+* Fix: The Translate button on ACF, Meta Box, WooCommerce variation, product tab, and Elementor fields no longer always translates to English. Each button row now has a language selector that defaults to your site language and remembers your choice; Generate and Improve use it too.
+* Security: AI-generated HTML is now sanitized (DOMPurify) before it is previewed or inserted into the classic editor, block editor, term descriptions, ACF, Meta Box, or Elementor fields, so prompt-injected scripts or event handlers cannot reach your pages.
+* Security: AI suggestions can only create new categories, tags, or other terms for users allowed to manage that taxonomy. Other users can still assign existing terms; names that would need a new term are skipped and reported.
+* Improvement: The block editor SEO panel no longer re-reads the whole post on every keystroke.
+* Fix: Bulk Fill no longer replaces existing product descriptions without asking. Short descriptions are expanded from their current text and are only replaced when you tick them; existing short descriptions and SEO meta are always kept.
+* Fix: Bulk Fill measures description length in characters, so stores writing in Chinese, Japanese, Arabic, and other languages are no longer told every description is empty.
+* Improvement: Bulk Fill has a checkbox per generated field, an "Apply all reviewed" button, and writes in your site language.
+* Fix: Updated default and fallback AI models (GPT-5.4 mini, Gemini 3.8 Flash, Claude Sonnet 5.5, GPT-OSS 120B on Groq, Mistral "latest" aliases, OpenRouter Auto). Your saved model choice is not changed.
+* Fix: Together.ai images work again. The removed FLUX.1 schnell free model is replaced by FLUX.2 (default FLUX.2 [pro]), the image model can be chosen and refreshed in Settings, and the Together.ai key test no longer depends on a retired chat model.
+* Improvement: Settings warns when your saved model is no longer in the provider's live model list, and generation errors caused by a retired model now tell you to choose another model.
+* Fix: The OpenAI model list no longer shows image, speech, and transcription models as text models.
+* Security: Deleting the plugin now removes saved API keys and the usage log, and cancels queued background jobs (on every site of a multisite network). Settings and custom templates are removed too, unless you turn on "Keep settings and custom templates when the plugin is deleted" under Settings → Usage & Limits. Content and SEO meta written to your posts are never removed.
+* Fix: Deactivating the plugin cancels queued auto-SEO jobs.
+* Improvement: Declared compatibility with WooCommerce High-Performance Order Storage (HPOS) and the Cart & Checkout blocks, so WooCommerce no longer flags the plugin as incompatible. The plugin never touches orders, the cart, or checkout.
+* Improvement: The field assistant no longer watches the whole page for changes on every post and term edit screen (including the block editor). It now watches only the WooCommerce product data box on product screens and batches updates, which keeps typing responsive.
+* Security: Updated the bundled HTML sanitizer (DOMPurify) to 3.4.17, which fixes several known sanitizer bypasses.
+* Security: The Google Gemini API key is now sent in a request header instead of the URL, so it cannot appear in proxy or server logs.
+* Fix: The daily generation limit can be set to 0 for no limit. A saved 0 is no longer reset to 100 the next time Settings is saved.
+* Fix: The Gemini model list is no longer cut off after the first 50 models.
+* Improvement: The block editor script is about 70% smaller (248 KB to 72 KB) after removing an unused bundled copy of React.
+* Improvement: Added suggested privacy policy text under Settings → Privacy → Policy Guide.
+* Improvement: License notices for bundled third-party code are now included in the plugin package, and the Plugin URI points to the correct WordPress.org page.
+
 = 2.1.0 =
 * Expanded AI writing across more WordPress and WooCommerce fields, including taxonomies, ACF, Meta Box, and Elementor.
 * Added Bulk Fill for empty WooCommerce product fields, with preview before apply.
@@ -247,6 +283,9 @@ You can prompt it, but you should not treat generated legal, medical, or complia
 
 == Upgrade Notice ==
 
+= 2.1.1 =
+Important fixes: image generation works again after OpenAI retired DALL-E 3, alt text is written from the actual image, AI-generated HTML is sanitized, Bulk Fill no longer replaces existing descriptions, and outdated AI models are updated. Review Settings → Image Generation after updating.
+
 = 2.1.0 =
 Adds Bulk Fill, more content templates, broader field support, and a Settings link. Requires PHP 7.4 or later.
 
@@ -254,7 +293,7 @@ Adds Bulk Fill, more content templates, broader field support, and a Settings li
 
 This plugin sends prompts and related content you choose to generate (such as a product title or excerpt) to the AI provider you configure. Requests happen only when you generate content, test a connection, or fetch models. No customer checkout data is sent.
 
-1. **OpenAI API** (https://api.openai.com) — ChatGPT text and DALL-E 3 images. Privacy: https://openai.com/policies/privacy-policy
+1. **OpenAI API** (https://api.openai.com) — ChatGPT text and GPT Image images. Privacy: https://openai.com/policies/privacy-policy
 2. **Groq API** (https://api.groq.com) — Fast text generation. Privacy: https://groq.com/privacy-policy
 3. **Google Gemini API** (https://generativelanguage.googleapis.com) — Gemini text models. Privacy: https://policies.google.com/privacy
 4. **Anthropic Claude API** (https://api.anthropic.com) — Claude text models. Privacy: https://www.anthropic.com/privacy
@@ -266,3 +305,7 @@ API keys remain in your WordPress database and are not shared with Techbysh.
 
 For help: https://techbysh.com/support
 GitHub: https://github.com/TechbyshOrg/wordpress-ai-assistant
+
+== Third-party Libraries ==
+
+* **DOMPurify** 3.4.17 (https://github.com/cure53/DOMPurify), used to sanitize AI-generated HTML. Licensed under MPL-2.0 or Apache-2.0. Bundled as assets/js/lib/purify.min.js (license in assets/js/lib/DOMPurify-LICENSE) and inside the compiled admin scripts.

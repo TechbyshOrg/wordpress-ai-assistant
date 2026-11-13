@@ -1,3 +1,5 @@
+import { sanitizeAiHtml, htmlToText } from './sanitizeHtml';
+
 function dispatchFieldEvents(element) {
     if (!element) {
         return;
@@ -80,7 +82,8 @@ function writeBlockEditorField(editorId, value) {
             return true;
         }
         if (editorId === 'excerpt') {
-            dispatch.editPost({ excerpt: value });
+            // The block editor excerpt is plain text.
+            dispatch.editPost({ excerpt: htmlToText(value).trim() });
             return true;
         }
     } catch (e) {
@@ -112,9 +115,11 @@ export function readWpEditorContent(editorId, format = 'html') {
 /**
  * Write HTML/text into a wp_editor field so TinyMCE, the textarea WordPress
  * posts on save, and Gutenberg (when present) stay in sync.
+ *
+ * The value is AI output, so it is sanitized before it reaches the editor.
  */
 export function writeWpEditorContent(editorId, content) {
-    const value = content == null ? '' : String(content);
+    const value = sanitizeAiHtml(content);
     const textarea = document.getElementById(editorId);
     const editor = getTinyMCEEditor(editorId);
     let written = false;

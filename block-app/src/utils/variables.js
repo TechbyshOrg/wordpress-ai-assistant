@@ -2,51 +2,56 @@
 // AI Provider Models
 // =========================================================================
 
+// These are fallbacks only. Settings loads each provider's live model list, and
+// providers retire models often — keep defaults in sync with DEFAULT_TEXT_MODELS in
+// includes/class-wacdmg-admin-api.php. Last reviewed: November 2026.
+
 // OpenAI ChatGPT models
 export const chatgptModels = [
-    { value: 'gpt-4o', label: 'GPT-4o (Omni) — Best overall' },
-    { value: 'gpt-4o-mini', label: 'GPT-4o mini — Fast & affordable' },
-    { value: 'o3-mini', label: 'o3-mini — Efficient reasoning' },
-    { value: 'o1-mini', label: 'o1-mini — Specialized reasoning' },
-    { value: 'o1', label: 'o1 — High-effort reasoning' },
+    { value: 'gpt-5.4-mini', label: 'GPT-5.4 mini — Recommended' },
+    { value: 'gpt-5.5', label: 'GPT-5.5 — Best quality' },
+    { value: 'gpt-5.4', label: 'GPT-5.4' },
+    { value: 'gpt-5.4-nano', label: 'GPT-5.4 nano — Lowest cost' },
 ];
 
 // Groq AI models
 export const groqModels = [
-    { value: 'llama-3.3-70b-versatile', label: 'Llama-3.3 70B Versatile — Recommended' },
-    { value: 'llama-3.1-8b-instant', label: 'Llama-3.1 8B Instant — Ultra fast' },
+    { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B — Recommended' },
+    { value: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B — Fastest' },
 ];
 
 // Google Gemini models
 export const geminiModels = [
-    { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash — Recommended' },
-    { value: 'gemini-3.1-pro', label: 'Gemini 3.1 Pro — Best quality' },
-    { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash Lite — Affordable' },
+    { value: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash — Recommended' },
+    { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash' },
+    { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite — Lowest cost' },
 ];
 
 // Anthropic Claude models
 export const claudeModels = [
-    { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 — Recommended' },
-    { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5 — Fast' },
-    { value: 'claude-opus-4-8', label: 'Claude Opus 4.8 — Highly capable' },
-    { value: 'claude-fable-5', label: 'Claude Fable 5 — Advanced reasoning' },
+    { value: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5 — Recommended' },
+    { value: 'claude-haiku-5-5', label: 'Claude Haiku 5.5 — Fastest, lowest cost' },
+    { value: 'claude-opus-5-5', label: 'Claude Opus 5.5 — Most capable' },
+    { value: 'claude-fable-5-2', label: 'Claude Fable 5.2' },
 ];
 
-// Mistral AI models
+// Mistral AI models ("-latest" aliases always point to the current version)
 export const mistralModels = [
     { value: 'mistral-large-latest', label: 'Mistral Large — Best quality' },
+    { value: 'mistral-medium-latest', label: 'Mistral Medium — Balanced' },
     { value: 'mistral-small-latest', label: 'Mistral Small — Fast & efficient' },
-    { value: 'codestral-latest', label: 'Codestral — Code specialist' },
 ];
 
-// OpenRouter models
+// OpenRouter models (the full live list loads even without a key)
 export const openrouterModels = [
-    { value: 'openai/gpt-4o', label: 'GPT-4o (OpenAI)' },
-    { value: 'openai/gpt-4o-mini', label: 'GPT-4o mini (OpenAI)' },
-    { value: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet (Anthropic)' },
-    { value: 'google/gemini-flash-1.5', label: 'Gemini 1.5 Flash (Google)' },
-    { value: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B (Meta)' },
-    { value: 'deepseek/deepseek-chat', label: 'DeepSeek V3 / R1 (DeepSeek)' },
+    { value: 'openrouter/auto', label: 'Auto — OpenRouter picks a model' },
+];
+
+// Together.ai image models (fallback; Settings can load the live list)
+export const togetherImageModels = [
+    { value: 'black-forest-labs/FLUX.2-pro', label: 'FLUX.2 [pro] — Recommended' },
+    { value: 'black-forest-labs/FLUX.2-flex', label: 'FLUX.2 [flex]' },
+    { value: 'black-forest-labs/FLUX.2-max', label: 'FLUX.2 [max] — Highest fidelity' },
 ];
 
 // =========================================================================
@@ -54,24 +59,27 @@ export const openrouterModels = [
 // =========================================================================
 
 export const imageProviders = [
-    { value: 'dalle', label: 'DALL-E 3 (OpenAI)' },
-    { value: 'together', label: 'FLUX / Stable Diffusion (Together.ai)' },
+    { value: 'openai', label: 'OpenAI GPT Image (uses your OpenAI key)' },
+    { value: 'together', label: 'FLUX (Together.ai)' },
+];
+
+// Fallback list; Settings can load the live list from OpenAI.
+export const openaiImageModels = [
+    { value: 'gpt-image-2', label: 'GPT Image 2 — Recommended' },
+    { value: 'gpt-image-1.5', label: 'GPT Image 1.5' },
+    { value: 'gpt-image-1-mini', label: 'GPT Image 1 mini — Lowest cost' },
 ];
 
 export const imageSizes = [
     { value: '1024x1024', label: '1024 × 1024 — Square' },
-    { value: '1792x1024', label: '1792 × 1024 — Landscape (16:9)' },
-    { value: '1024x1792', label: '1024 × 1792 — Portrait (9:16)' },
+    { value: '1536x1024', label: '1536 × 1024 — Landscape (3:2)' },
+    { value: '1024x1536', label: '1024 × 1536 — Portrait (2:3)' },
 ];
 
 export const imageQualities = [
-    { value: 'standard', label: 'Standard' },
-    { value: 'hd', label: 'HD — More detail (higher cost)' },
-];
-
-export const imageStyles = [
-    { value: 'vivid', label: 'Vivid — Hyper-real, dramatic' },
-    { value: 'natural', label: 'Natural — Subtle, realistic' },
+    { value: 'low', label: 'Low — Fastest, lowest cost' },
+    { value: 'medium', label: 'Medium — Balanced' },
+    { value: 'high', label: 'High — Most detail, highest cost' },
 ];
 
 export const imageStylePresets = [
@@ -128,7 +136,7 @@ export const providerMeta = {
     chatgpt: {
         label: 'OpenAI ChatGPT',
         color: '#10a37f',
-        description: 'Industry-leading GPT models. Excellent all-rounder for content, SEO, and image generation (DALL-E 3).',
+        description: 'Industry-leading GPT models. Excellent all-rounder for content, SEO, and image generation (GPT Image).',
         keyPlaceholder: 'sk-...your-openai-key',
         docsUrl: 'https://platform.openai.com/api-keys',
         models: chatgptModels,

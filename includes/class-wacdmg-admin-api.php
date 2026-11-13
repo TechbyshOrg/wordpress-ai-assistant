@@ -14,6 +14,47 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WACDMG_Admin_API {
 
     /**
+     * Default OpenAI image model.
+     *
+     * @var string
+     */
+    const DEFAULT_IMAGE_MODEL = 'gpt-image-2';
+
+    /**
+     * Default Together.ai image model.
+     *
+     * @var string
+     */
+    const DEFAULT_TOGETHER_IMAGE_MODEL = 'black-forest-labs/FLUX.2-pro';
+
+    /**
+     * Default text model per provider, used when no model is saved.
+     *
+     * Settings loads each provider's live model list; these only apply before a model is chosen.
+     *
+     * @var array
+     */
+    const DEFAULT_TEXT_MODELS = array(
+        'chatgpt'    => 'gpt-5.4-mini',
+        'groq'       => 'openai/gpt-oss-120b',
+        'gemini'     => 'gemini-3.8-flash',
+        'claude'     => 'claude-sonnet-5-5',
+        'mistral'    => 'mistral-large-latest',
+        'openrouter' => 'openrouter/auto',
+    );
+
+    /**
+     * Default text model for a provider.
+     *
+     * @param string $provider Provider slug.
+     * @return string
+     */
+    private function wacdmg_default_text_model( $provider ) {
+        $defaults = self::DEFAULT_TEXT_MODELS;
+        return isset( $defaults[ $provider ] ) ? $defaults[ $provider ] : '';
+    }
+
+    /**
      * Plugin namespace for REST API
      *
      * @var string
@@ -34,6 +75,7 @@ class WACDMG_Admin_API {
     public function wacdmg_init_hooks() {
         add_action( 'rest_api_init', array( $this, 'wacdmg_register_routes' ) );
         add_action( 'transition_post_status', array( $this, 'wacdmg_auto_seo_on_publish' ), 20, 3 );
+        add_action( 'wacdmg_auto_seo_job', array( $this, 'wacdmg_run_auto_seo_job' ), 10, 2 );
     }
 
     /**
@@ -133,6 +175,101 @@ class WACDMG_Admin_API {
     }
 
     /**
+     * Normalize the image provider. Legacy "dalle" maps to "openai".
+     *
+     * @param mixed $value Raw value.
+     * @return string openai|together
+     */
+    private function wacdmg_normalize_image_provider( $value ) {
+        $value = sanitize_key( (string) $value );
+        return 'together' === $value ? 'together' : 'openai';
+    }
+
+    /**
+     * Normalize an OpenAI image model ID. Retired DALL-E models fall back to the default.
+     *
+     * @param mixed $value Raw value.
+     * @return string
+     */
+    private function wacdmg_normalize_image_model( $value ) {
+        $value = sanitize_text_field( (string) $value );
+        if ( '' === $value || 0 === strpos( $value, 'dall-e' ) || ! preg_match( '/^[A-Za-z0-9._\-]+$/', $value ) ) {
+            return self::DEFAULT_IMAGE_MODEL;
+        }
+        return $value;
+    }
+
+    /**
+     * Normalize a Together.ai image model ID. Removed FLUX.1 schnell models fall back to the default.
+     *
+     * @param mixed $value Raw value.
+     * @return string
+     */
+    private function wacdmg_normalize_together_image_model( $value ) {
+        $value = sanitize_text_field( (string) $value );
+        if ( '' === $value || false !== stripos( $value, 'FLUX.1-schnell' ) || ! preg_match( '/^[A-Za-z0-9._\-\/]+$/', $value ) ) {
+            return self::DEFAULT_TOGETHER_IMAGE_MODEL;
+        }
+        return $value;
+    }
+
+    /**
+     * Normalize an image size. Legacy DALL-E 3 sizes map to the closest GPT Image size.
+     *
+     * @param mixed $value Raw value.
+     * @return string
+     */
+    private function wacdmg_normalize_image_size( $value ) {
+        $value  = sanitize_text_field( (string) $value );
+        $legacy = array(
+            '1792x1024' => '1536x1024',
+            '1024x1792' => '1024x1536',
+        );
+        if ( isset( $legacy[ $value ] ) ) {
+            $value = $legacy[ $value ];
+        }
+        $allowed = array( '1024x1024', '1536x1024', '1024x1536' );
+        return in_array( $value, $allowed, true ) ? $value : '1024x1024';
+    }
+
+    /**
+     * Normalize image quality. Legacy DALL-E 3 values map to GPT Image values.
+     *
+     * @param mixed $value Raw value.
+     * @return string low|medium|high
+     */
+    private function wacdmg_normalize_image_quality( $value ) {
+        $value  = sanitize_key( (string) $value );
+        $legacy = array(
+            'standard' => 'medium',
+            'hd'       => 'high',
+        );
+        if ( isset( $legacy[ $value ] ) ) {
+            $value = $legacy[ $value ];
+        }
+        return in_array( $value, array( 'low', 'medium', 'high' ), true ) ? $value : 'medium';
+    }
+
+    /**
+     * Saved image settings, normalized for the current image API.
+     *
+     * @return array { provider, model, size, quality }
+     */
+    private function wacdmg_get_image_settings() {
+        $creds = get_option( 'wacdmg_ai_creds', array() );
+        if ( ! is_array( $creds ) ) {
+            $creds = array();
+        }
+        return array(
+            'provider' => $this->wacdmg_normalize_image_provider( $creds['image_provider'] ?? 'openai' ),
+            'model'    => $this->wacdmg_normalize_image_model( $creds['image_model'] ?? '' ),
+            'together_model' => $this->wacdmg_normalize_together_image_model( $creds['together_image_model'] ?? '' ),
+            'size'     => $this->wacdmg_normalize_image_size( $creds['image_size'] ?? '1024x1024' ),
+            'quality'  => $this->wacdmg_normalize_image_quality( $creds['image_quality'] ?? 'medium' ),
+        );
+    }
+
+    /**
      * Build a REST error payload, preserving HTTP 429 for rate limits.
      *
      * @param array $result Result array with error/code keys.
@@ -224,18 +361,20 @@ class WACDMG_Admin_API {
             'claude_key'          => $this->wacdmg_resolve_saved_key( $formData['claudeKey'] ?? '', $existing, array( 'claude_key' ) ),
             'mistral_key'         => $this->wacdmg_resolve_saved_key( $formData['mistralKey'] ?? '', $existing, array( 'mistral_key' ) ),
             'openrouter_key'      => $this->wacdmg_resolve_saved_key( $formData['openrouterKey'] ?? '', $existing, array( 'openrouter_key' ) ),
-            'image_provider'      => sanitize_text_field( $formData['imageProvider'] ?? 'dalle' ),
+            'image_provider'      => $this->wacdmg_normalize_image_provider( $formData['imageProvider'] ?? 'openai' ),
+            'image_model'         => $this->wacdmg_normalize_image_model( $formData['imageModel'] ?? '' ),
+            'together_image_model' => $this->wacdmg_normalize_together_image_model( $formData['togetherImageModel'] ?? '' ),
             'together_key'        => $this->wacdmg_resolve_saved_key( $formData['togetherKey'] ?? '', $existing, array( 'together_key' ) ),
-            'image_size'          => sanitize_text_field( $formData['imageSize'] ?? '1024x1024' ),
-            'image_quality'       => sanitize_text_field( $formData['imageQuality'] ?? 'standard' ),
-            'image_style'         => sanitize_text_field( $formData['imageStyle'] ?? 'vivid' ),
+            'image_size'          => $this->wacdmg_normalize_image_size( $formData['imageSize'] ?? '1024x1024' ),
+            'image_quality'       => $this->wacdmg_normalize_image_quality( $formData['imageQuality'] ?? 'medium' ),
             'seo_integration'     => ( function () use ( $formData ) {
                 $seo = sanitize_key( $formData['seoIntegration'] ?? 'auto' );
                 $allowed = array( 'auto', 'yoast', 'rankmath', 'aioseo', 'seopress', 'generic' );
                 return in_array( $seo, $allowed, true ) ? $seo : 'auto';
             } )(),
             'auto_seo_on_publish' => ! empty( $formData['autoSeoOnPublish'] ),
-            'rate_limit_day'      => intval( $formData['rateLimitDay'] ?? 100 ),
+            'rate_limit_day'      => max( 0, intval( $formData['rateLimitDay'] ?? 100 ) ), // 0 = no limit.
+            'keep_data_on_uninstall' => ! empty( $formData['keepDataOnUninstall'] ),
         );
         $settingsData['apiKey'] = $settingsData['chatgpt_key'];
 
@@ -281,6 +420,15 @@ class WACDMG_Admin_API {
                 $masked[ $k ] = $v;
             }
         }
+
+        // Return image settings in their current (normalized) form so legacy values display correctly.
+        $image = $this->wacdmg_get_image_settings();
+        $masked['image_provider'] = $image['provider'];
+        $masked['image_model']    = $image['model'];
+        $masked['together_image_model'] = $image['together_model'];
+        $masked['image_size']     = $image['size'];
+        $masked['image_quality']  = $image['quality'];
+        unset( $masked['image_style'] );
 
         return new WP_REST_Response( array(
             'success'     => true,
@@ -347,22 +495,22 @@ class WACDMG_Admin_API {
 
         switch ( $provider ) {
             case 'chatgpt':
-                $result = $this->wacdmg_handle_ai_prompt_chatgpt( $test_prompt, $api_key, $model ?: 'gpt-4o-mini' );
+                $result = $this->wacdmg_handle_ai_prompt_chatgpt( $test_prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'chatgpt' ) );
                 break;
             case 'groq':
-                $result = $this->wacdmg_handle_ai_prompt_groq( $test_prompt, $api_key, $model ?: 'llama-3.1-8b-instant' );
+                $result = $this->wacdmg_handle_ai_prompt_groq( $test_prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'groq' ) );
                 break;
             case 'gemini':
-                $result = $this->wacdmg_handle_ai_prompt_gemini( $test_prompt, $api_key, $model ?: 'gemini-3.5-flash' );
+                $result = $this->wacdmg_handle_ai_prompt_gemini( $test_prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'gemini' ) );
                 break;
             case 'claude':
-                $result = $this->wacdmg_handle_ai_prompt_claude( $test_prompt, $api_key, $model ?: 'claude-sonnet-4-6' );
+                $result = $this->wacdmg_handle_ai_prompt_claude( $test_prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'claude' ) );
                 break;
             case 'mistral':
-                $result = $this->wacdmg_handle_ai_prompt_mistral( $test_prompt, $api_key, $model ?: 'mistral-small-latest' );
+                $result = $this->wacdmg_handle_ai_prompt_mistral( $test_prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'mistral' ) );
                 break;
             case 'openrouter':
-                $result = $this->wacdmg_handle_ai_prompt_openrouter( $test_prompt, $api_key, $model ?: 'openai/gpt-4o-mini' );
+                $result = $this->wacdmg_handle_ai_prompt_openrouter( $test_prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'openrouter' ) );
                 break;
             case 'together':
                 $result = $this->wacdmg_test_together_key( $api_key );
@@ -388,22 +536,18 @@ class WACDMG_Admin_API {
     }
 
     /**
-     * Test Together.ai API key using a lightweight completion
+     * Test a Together.ai API key by listing models.
+     *
+     * Listing models is free and does not depend on any specific model still being available.
      *
      * @param string $api_key Together.ai API key.
      * @return array
      */
     private function wacdmg_test_together_key( $api_key ) {
-        $response = wp_remote_post( 'https://api.together.xyz/v1/chat/completions', array(
+        $response = wp_remote_get( 'https://api.together.xyz/v1/models', array(
             'headers' => array(
                 'Authorization' => 'Bearer ' . $api_key,
-                'Content-Type'  => 'application/json',
             ),
-            'body'    => json_encode( array(
-                'model'      => 'meta-llama/Llama-3-8b-chat-hf',
-                'messages'   => array( array( 'role' => 'user', 'content' => 'test' ) ),
-                'max_tokens' => 5,
-            ) ),
             'timeout' => 15,
         ) );
 
@@ -415,7 +559,7 @@ class WACDMG_Admin_API {
         $body = wp_remote_retrieve_body( $response );
         $data = json_decode( $body, true );
 
-        if ( $code === 200 && isset( $data['choices'][0]['message']['content'] ) ) {
+        if ( 200 === $code && is_array( $data ) ) {
             return array( 'success' => true );
         }
 
@@ -496,6 +640,7 @@ class WACDMG_Admin_API {
                     'applied'  => ! empty( $applied['success'] ),
                     'term_ids' => isset( $applied['term_ids'] ) ? $applied['term_ids'] : array(),
                     'taxonomy' => isset( $applied['taxonomy'] ) ? $applied['taxonomy'] : '',
+                    'skipped'  => isset( $applied['skipped'] ) ? $applied['skipped'] : array(),
                 ),
             ), 200 );
         }
@@ -523,6 +668,7 @@ class WACDMG_Admin_API {
                     'applied'  => ! empty( $applied['success'] ),
                     'term_ids' => isset( $applied['term_ids'] ) ? $applied['term_ids'] : array(),
                     'taxonomy' => isset( $applied['taxonomy'] ) ? $applied['taxonomy'] : '',
+                    'skipped'  => isset( $applied['skipped'] ) ? $applied['skipped'] : array(),
                 ),
             ), 200 );
         }
@@ -538,32 +684,17 @@ class WACDMG_Admin_API {
      * @return array { success: bool, taxonomy: string, term_ids: int[] }
      */
     private function wacdmg_apply_tags_to_post( $post_id, $tags ) {
-        if ( ! $post_id || empty( $tags ) || ! current_user_can( 'edit_post', $post_id ) ) {
-            return array(
-                'success'  => false,
-                'taxonomy' => '',
-                'term_ids' => array(),
-            );
-        }
         $taxonomy = ( get_post_type( $post_id ) === 'product' && taxonomy_exists( 'product_tag' ) )
             ? 'product_tag'
             : 'post_tag';
-        if ( ! taxonomy_exists( $taxonomy ) ) {
-            return array(
-                'success'  => false,
-                'taxonomy' => $taxonomy,
-                'term_ids' => array(),
-            );
-        }
-        wp_set_object_terms( $post_id, $tags, $taxonomy, true );
-        $term_ids = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'ids' ) );
-        if ( is_wp_error( $term_ids ) ) {
-            $term_ids = array();
-        }
+
+        $applied = $this->wacdmg_apply_terms_to_post( $post_id, $tags, $taxonomy );
+
         return array(
-            'success'  => true,
-            'taxonomy' => $taxonomy,
-            'term_ids' => array_map( 'intval', $term_ids ),
+            'success'  => ! empty( $applied['applied'] ),
+            'taxonomy' => $applied['taxonomy'],
+            'term_ids' => $applied['term_ids'],
+            'skipped'  => $applied['skipped'],
         );
     }
 
@@ -662,10 +793,14 @@ class WACDMG_Admin_API {
     /**
      * Append taxonomy terms, matching existing terms when possible.
      *
+     * Follows WordPress capabilities: the user needs the taxonomy's assign_terms capability to
+     * attach terms, and its edit_terms capability to create terms that do not exist yet.
+     * Names that would need a new term the user cannot create are returned in 'skipped'.
+     *
      * @param int    $post_id  Post ID.
      * @param array  $names    Term names.
      * @param string $taxonomy Taxonomy slug.
-     * @return array
+     * @return array { applied: bool, term_ids: int[], taxonomy: string, skipped: string[] }
      */
     private function wacdmg_apply_terms_to_post( $post_id, $names, $taxonomy = 'product_cat' ) {
         $taxonomy = sanitize_key( $taxonomy );
@@ -673,6 +808,7 @@ class WACDMG_Admin_API {
             'applied'  => false,
             'term_ids' => array(),
             'taxonomy' => $taxonomy,
+            'skipped'  => array(),
         );
         if ( ! $post_id || empty( $names ) || ! current_user_can( 'edit_post', $post_id ) || ! taxonomy_exists( $taxonomy ) ) {
             return $empty;
@@ -683,20 +819,39 @@ class WACDMG_Admin_API {
             return $empty;
         }
 
+        $tax_object = get_taxonomy( $taxonomy );
+        if ( ! $tax_object || ! current_user_can( $tax_object->cap->assign_terms ) ) {
+            return $empty;
+        }
+        $can_create = current_user_can( $tax_object->cap->edit_terms );
+
         $term_ids = array();
+        $skipped  = array();
         foreach ( $names as $name ) {
+            $name = trim( (string) $name );
+            if ( '' === $name ) {
+                continue;
+            }
             $existing = get_term_by( 'name', $name, $taxonomy );
             if ( $existing && ! is_wp_error( $existing ) ) {
                 $term_ids[] = (int) $existing->term_id;
                 continue;
             }
+            if ( ! $can_create ) {
+                $skipped[] = $name;
+                continue;
+            }
             $inserted = wp_insert_term( $name, $taxonomy );
             if ( ! is_wp_error( $inserted ) && ! empty( $inserted['term_id'] ) ) {
                 $term_ids[] = (int) $inserted['term_id'];
+            } elseif ( is_wp_error( $inserted ) && 'term_exists' === $inserted->get_error_code() ) {
+                // Same slug, different name (e.g. "T-Shirts" vs "T Shirts"): reuse it.
+                $term_ids[] = (int) $inserted->get_error_data( 'term_exists' );
             }
         }
         $term_ids = array_values( array_unique( array_filter( $term_ids ) ) );
         if ( empty( $term_ids ) ) {
+            $empty['skipped'] = $skipped;
             return $empty;
         }
         wp_set_object_terms( $post_id, $term_ids, $taxonomy, true );
@@ -708,6 +863,7 @@ class WACDMG_Admin_API {
             'applied'  => true,
             'term_ids' => array_map( 'intval', $all ),
             'taxonomy' => $taxonomy,
+            'skipped'  => $skipped,
         );
     }
 
@@ -904,8 +1060,24 @@ class WACDMG_Admin_API {
 
         $featured = (bool) get_post_thumbnail_id( $post_id );
         $gaps = array();
-        if ( $content === '' || str_word_count( $content ) < 20 ) {
-            $gaps[] = 'description';
+
+        /**
+         * Filter the length (in characters) below which a product description counts as thin.
+         *
+         * Characters are used rather than words so languages without spaces (Chinese, Japanese, Thai)
+         * are measured correctly.
+         *
+         * @param int $chars Default 160.
+         */
+        $thin_chars        = (int) apply_filters( 'wacdmg_thin_description_chars', 160 );
+        $content_length    = function_exists( 'mb_strlen' ) ? mb_strlen( $content ) : strlen( $content );
+        $description_state = 'ok';
+        if ( '' === $content ) {
+            $description_state = 'empty';
+            $gaps[]            = 'description';
+        } elseif ( $content_length < $thin_chars ) {
+            $description_state = 'thin';
+            $gaps[]            = 'description';
         }
         if ( $excerpt === '' ) {
             $gaps[] = 'excerpt';
@@ -942,6 +1114,7 @@ class WACDMG_Admin_API {
             'title'               => $title,
             'edit_url'            => get_edit_post_link( $post_id, 'raw' ),
             'gaps'                => $gaps,
+            'description_state'   => $description_state,
             'has_title'           => $title !== '',
             'content'             => $content,
             'excerpt'             => $excerpt,
@@ -964,18 +1137,36 @@ class WACDMG_Admin_API {
             ), 403 );
         }
 
+        // Fields that already have a value are only replaced when the request explicitly asks for it.
+        $replace = $request->get_param( 'replace' );
+        $replace = is_array( $replace ) ? array_map( 'sanitize_key', $replace ) : array();
+        $current = get_post( $post_id );
+        $kept    = array();
+
         $update = array( 'ID' => $post_id );
         $title = $request->get_param( 'title' );
         $content = $request->get_param( 'content' );
         $excerpt = $request->get_param( 'excerpt' );
         if ( is_string( $title ) && $title !== '' ) {
-            $update['post_title'] = sanitize_text_field( $title );
+            if ( '' === trim( $current->post_title ) || in_array( 'title', $replace, true ) ) {
+                $update['post_title'] = sanitize_text_field( $title );
+            } else {
+                $kept[] = 'title';
+            }
         }
         if ( is_string( $content ) && $content !== '' ) {
-            $update['post_content'] = wp_kses_post( $content );
+            if ( '' === trim( wp_strip_all_tags( $current->post_content ) ) || in_array( 'content', $replace, true ) ) {
+                $update['post_content'] = wp_kses_post( $content );
+            } else {
+                $kept[] = 'content';
+            }
         }
         if ( is_string( $excerpt ) && $excerpt !== '' ) {
-            $update['post_excerpt'] = wp_kses_post( $excerpt );
+            if ( '' === trim( wp_strip_all_tags( $current->post_excerpt ) ) || in_array( 'excerpt', $replace, true ) ) {
+                $update['post_excerpt'] = wp_kses_post( $excerpt );
+            } else {
+                $kept[] = 'excerpt';
+            }
         }
         if ( count( $update ) > 1 ) {
             wp_update_post( $update );
@@ -991,8 +1182,14 @@ class WACDMG_Admin_API {
         }
         $seo = $request->get_param( 'seo' );
         if ( is_array( $seo ) && class_exists( 'WACDMG_SEO' ) ) {
-            $writer = new WACDMG_SEO();
-            $writer->wacdmg_write_seo_meta( $post_id, $seo );
+            $writer   = new WACDMG_SEO();
+            $existing = $writer->wacdmg_get_existing_seo_meta( $post_id );
+            $has_seo  = ! empty( $existing['seo_title'] ) || ! empty( $existing['meta_description'] );
+            if ( ! $has_seo || in_array( 'seo', $replace, true ) ) {
+                $writer->wacdmg_write_seo_meta( $post_id, $seo );
+            } else {
+                $kept[] = 'seo';
+            }
         }
 
         $purchase_note = $request->get_param( 'purchase_note' );
@@ -1000,9 +1197,12 @@ class WACDMG_Admin_API {
             update_post_meta( $post_id, '_purchase_note', sanitize_textarea_field( $purchase_note ) );
         }
 
+        $status         = $this->wacdmg_get_product_content_status( $post_id );
+        $status['kept'] = $kept;
+
         return new WP_REST_Response( array(
             'success' => true,
-            'data'    => $this->wacdmg_get_product_content_status( $post_id ),
+            'data'    => $status,
         ), 200 );
     }
 
@@ -1073,18 +1273,60 @@ class WACDMG_Admin_API {
     }
 
     /**
-     * Generate alt text for an image endpoint
+     * Build the vision prompt for alt text or a caption.
+     *
+     * @param string $target  'alt' or 'caption'.
+     * @param string $context Optional page/product title that may name the subject.
+     * @return string
+     */
+    private function wacdmg_build_image_text_prompt( $target, $context = '' ) {
+        $locale  = get_locale();
+        $context = $context !== '' ? "\nContext — this image is used on a page or product titled: \"" . $context . '". Use it only to name the subject if it matches what you see.' : '';
+
+        if ( 'caption' === $target ) {
+            return 'Write a short caption for the attached image: one or two sentences that add useful context for readers.'
+                . "\nDescribe only what is actually visible. Do not invent details you cannot see."
+                . $context
+                . "\nWrite in the language for the locale \"" . $locale . '".'
+                . "\nReturn only the caption as plain text, without quotes.";
+        }
+
+        return 'Write alt text for the attached image, for people using screen readers.'
+            . "\nDescribe the important visible content specifically and factually, in under 125 characters."
+            . "\nDo not invent details you cannot see. Do not start with \"Image of\" or \"Picture of\"."
+            . $context
+            . "\nWrite in the language for the locale \"" . $locale . '".'
+            . "\nReturn only the alt text as plain text, without quotes.";
+    }
+
+    /**
+     * Generate alt text or a caption by sending the image itself to a vision model.
+     *
+     * Request params:
+     * - attachment_id (int, required): image attachment.
+     * - target ('alt'|'caption'): what to write. Default 'alt'.
+     * - context (string): optional page/product title.
+     * - save (bool): write the result to the attachment. Default false, so the UI can show it for review.
+     * - skip_if_filled (bool): bulk mode — skip images that already have a value, and save the result.
      *
      * @param WP_REST_Request $request The REST request object.
      * @return WP_REST_Response
      */
     public function wacdmg_generate_alt_text( WP_REST_Request $request ) {
-        $prompt        = $request->get_param( 'prompt' );
-        $attachment_id = intval( $request->get_param( 'attachment_id' ) );
-        $target        = sanitize_key( $request->get_param( 'target' ) ?: 'alt' );
+        $attachment_id  = intval( $request->get_param( 'attachment_id' ) );
+        $target         = 'caption' === sanitize_key( $request->get_param( 'target' ) ?: 'alt' ) ? 'caption' : 'alt';
+        $context        = sanitize_text_field( (string) $request->get_param( 'context' ) );
         $skip_if_filled = (bool) $request->get_param( 'skip_if_filled' );
+        $save           = (bool) $request->get_param( 'save' ) || $skip_if_filled;
 
-        if ( $attachment_id && ! current_user_can( 'edit_post', $attachment_id ) ) {
+        if ( ! $attachment_id ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => 'Choose an image from the Media Library first. AI alt text needs to see the image itself.' ),
+            ), 400 );
+        }
+
+        if ( ! current_user_can( 'edit_post', $attachment_id ) ) {
             return new WP_REST_Response( array(
                 'success' => false,
                 'data'    => array( 'message' => 'You cannot edit this attachment.' ),
@@ -1111,36 +1353,47 @@ class WACDMG_Admin_API {
             }
         }
 
-        $result = $this->wacdmg_run_ai_prompt( $prompt );
+        $image = ( new WACDMG_Image_AI() )->wacdmg_get_image_for_vision( $attachment_id );
+        if ( is_wp_error( $image ) ) {
+            return new WP_REST_Response( array(
+                'success' => false,
+                'data'    => array( 'message' => $image->get_error_message() ),
+            ), 400 );
+        }
 
-        if ( $result['success'] ) {
-            $this->wacdmg_log_usage( 'alt_text' );
-            $text = wp_strip_all_tags( $result['description'] );
+        $prompt = $this->wacdmg_build_image_text_prompt( $target, $context );
+        $result = $this->wacdmg_run_ai_prompt( $prompt, 'vision', $image );
 
-            if ( $target === 'caption' ) {
-                if ( $attachment_id ) {
-                    wp_update_post( array(
-                        'ID'           => $attachment_id,
-                        'post_excerpt' => sanitize_textarea_field( $text ),
-                    ) );
-                }
-                return new WP_REST_Response( array(
-                    'success' => true,
-                    'data'    => array( 'caption' => $text ),
-                ), 200 );
+        if ( ! $result['success'] ) {
+            return $this->wacdmg_error_rest_response( $result );
+        }
+
+        $this->wacdmg_log_usage( 'alt_text' );
+        $text = trim( wp_strip_all_tags( $result['description'] ), " \t\n\r\0\x0B\"'" );
+
+        if ( 'caption' === $target ) {
+            $text = sanitize_textarea_field( $text );
+            if ( $save ) {
+                wp_update_post( array(
+                    'ID'           => $attachment_id,
+                    'post_excerpt' => $text,
+                ) );
             }
-
-            if ( $attachment_id ) {
-                update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $text ) );
-            }
-
             return new WP_REST_Response( array(
                 'success' => true,
-                'data'    => array( 'alt_text' => $text ),
+                'data'    => array( 'caption' => $text, 'saved' => $save ),
             ), 200 );
         }
 
-        return $this->wacdmg_error_rest_response( $result );
+        $text = sanitize_text_field( $text );
+        if ( $save ) {
+            update_post_meta( $attachment_id, '_wp_attachment_image_alt', $text );
+        }
+
+        return new WP_REST_Response( array(
+            'success' => true,
+            'data'    => array( 'alt_text' => $text, 'saved' => $save ),
+        ), 200 );
     }
 
     /**
@@ -1258,10 +1511,10 @@ class WACDMG_Admin_API {
      * @return WP_REST_Response
      */
     public function wacdmg_generate_image( WP_REST_Request $request ) {
-        $prompt       = sanitize_text_field( $request->get_param( 'prompt' ) );
-        $size         = sanitize_text_field( $request->get_param( 'size' ) ?: '1024x1024' );
-        $quality      = sanitize_text_field( $request->get_param( 'quality' ) ?: 'standard' );
-        $style        = sanitize_text_field( $request->get_param( 'style' ) ?: 'vivid' );
+        $defaults     = $this->wacdmg_get_image_settings();
+        $prompt       = sanitize_textarea_field( (string) $request->get_param( 'prompt' ) );
+        $size         = $this->wacdmg_normalize_image_size( $request->get_param( 'size' ) ?: $defaults['size'] );
+        $quality      = $this->wacdmg_normalize_image_quality( $request->get_param( 'quality' ) ?: $defaults['quality'] );
         $save_to_lib  = (bool) $request->get_param( 'save_to_library' );
         $post_id      = intval( $request->get_param( 'post_id' ) );
         $set_featured = (bool) $request->get_param( 'set_as_featured' );
@@ -1292,55 +1545,70 @@ class WACDMG_Admin_API {
             ), 403 );
         }
 
-        $aiCred        = get_option( 'wacdmg_ai_creds', array() );
-        $image_provider = $aiCred['image_provider'] ?? 'dalle';
+        $aiCred = get_option( 'wacdmg_ai_creds', array() );
 
-        if ( $image_provider === 'together' && ! empty( $aiCred['together_key'] ) ) {
-            $result = $this->wacdmg_generate_image_together( $prompt, $aiCred['together_key'], $size );
+        if ( 'together' === $defaults['provider'] ) {
+            if ( empty( $aiCred['together_key'] ) ) {
+                return new WP_REST_Response( array(
+                    'success' => false,
+                    'data'    => array( 'message' => 'Together.ai is selected as the image provider, but no Together.ai API key is saved. Add one under AI Assistant → Settings → Image Generation.' ),
+                ), 400 );
+            }
+            $result = $this->wacdmg_generate_image_together( $prompt, $aiCred['together_key'], $size, $defaults['together_model'] );
         } else {
-            // Default: DALL-E 3 via OpenAI
             $api_key = $aiCred['chatgpt_key'] ?? ( $aiCred['apiKey'] ?? '' );
             if ( empty( $api_key ) ) {
                 return new WP_REST_Response( array(
                     'success' => false,
-                    'data'    => array( 'message' => 'OpenAI API key is required for DALL-E image generation.' ),
+                    'data'    => array( 'message' => 'An OpenAI API key is required for image generation. Add one under AI Assistant → Settings.' ),
                 ), 400 );
             }
-            $result = $this->wacdmg_generate_image_dalle( $prompt, $api_key, $size, $quality, $style );
+            $result = $this->wacdmg_generate_image_openai( $prompt, $api_key, $defaults['model'], $size, $quality );
         }
 
         if ( ! $result['success'] ) {
             return $this->wacdmg_error_rest_response( $result );
         }
 
-        $image_url     = $result['url'];
-        $attachment_id = null;
-
-        // Save to Media Library
-        if ( $save_to_lib && ! empty( $image_url ) ) {
-            if ( class_exists( 'WACDMG_Image_AI' ) ) {
-                $img_ai        = new WACDMG_Image_AI();
-                $attachment_id = $img_ai->wacdmg_save_image_to_library( $image_url, $prompt );
-            }
-
-            // Set as featured image
-            if ( $attachment_id && ! is_wp_error( $attachment_id ) && $post_id && $set_featured && current_user_can( 'edit_post', $post_id ) ) {
-                set_post_thumbnail( $post_id, $attachment_id );
-            }
-        }
-
-        if ( is_wp_error( $attachment_id ) ) {
-            $attachment_id = null;
-        }
-
+        // The image was produced (and billed), so count it before any save step.
         $this->wacdmg_log_usage( 'image' );
+
+        $attachment_id = null;
+        $display_url   = '';
+        $save_error    = '';
+
+        if ( $save_to_lib && class_exists( 'WACDMG_Image_AI' ) ) {
+            $img_ai      = new WACDMG_Image_AI();
+            $attach_to   = ( $post_id && current_user_can( 'edit_post', $post_id ) ) ? $post_id : 0;
+            $saved       = ! empty( $result['data'] )
+                ? $img_ai->wacdmg_save_image_data( $result['data'], $prompt, $attach_to )
+                : $img_ai->wacdmg_save_image_to_library( $result['url'], $prompt, $attach_to );
+
+            if ( is_wp_error( $saved ) ) {
+                $save_error = 'The image was generated but could not be saved to the Media Library: ' . $saved->get_error_message();
+            } else {
+                $attachment_id = (int) $saved;
+                $display_url   = (string) wp_get_attachment_url( $attachment_id );
+                if ( $post_id && $set_featured && current_user_can( 'edit_post', $post_id ) ) {
+                    set_post_thumbnail( $post_id, $attachment_id );
+                }
+            }
+        }
+
+        // Unsaved images are returned inline so the preview never expires.
+        if ( '' === $display_url ) {
+            $display_url = ! empty( $result['data'] )
+                ? 'data:' . $result['mime'] . ';base64,' . base64_encode( $result['data'] )
+                : $result['url'];
+        }
 
         return new WP_REST_Response( array(
             'success' => true,
             'data'    => array(
-                'url'           => $image_url,
-                'attachment_id' => $attachment_id,
-                'revised_prompt'=> $result['revised_prompt'] ?? '',
+                'url'            => $display_url,
+                'attachment_id'  => $attachment_id,
+                'revised_prompt' => $result['revised_prompt'] ?? '',
+                'save_error'     => $save_error,
             ),
         ), 200 );
     }
@@ -1463,11 +1731,56 @@ class WACDMG_Admin_API {
     /**
      * Route a prompt to the configured AI provider
      *
-     * @param string $prompt The prompt to send.
-     * @param string $type   Optional type hint (e.g. 'chat').
+     * @param string     $prompt The prompt to send.
+     * @param string     $type   Optional type hint (e.g. 'chat').
+     * @param array|null $image  Optional image for vision models: array( 'mime' => string, 'data' => base64 string ).
      * @return array Result array with 'success', 'description', and 'error' keys.
      */
-    private function wacdmg_run_ai_prompt( $prompt, $type = 'text' ) {
+    private function wacdmg_run_ai_prompt( $prompt, $type = 'text', $image = null ) {
+        $result = $this->wacdmg_dispatch_ai_prompt( $prompt, $image );
+
+        // Providers retire models regularly; point people to the fix instead of a raw API error.
+        if ( empty( $result['success'] ) && $this->wacdmg_is_model_unavailable_error( $result['error'] ?? '' ) ) {
+            $result['error'] = ( $result['error'] ?? '' )
+                . ' — The selected model may have been retired. Choose another model under AI Assistant → Settings.';
+            return $result;
+        }
+
+        if ( $image && empty( $result['success'] ) && 429 !== (int) ( $result['code'] ?? 0 ) ) {
+            $result['error'] = ( $result['error'] ?? 'Request failed.' )
+                . ' — This request includes an image. If your selected model cannot read images, choose a vision-capable model in AI Assistant → Settings.';
+        }
+
+        return $result;
+    }
+
+    /**
+     * Whether a provider error says the requested model does not exist or was retired.
+     *
+     * @param string $error Error message from the provider.
+     * @return bool
+     */
+    private function wacdmg_is_model_unavailable_error( $error ) {
+        $error = strtolower( (string) $error );
+        if ( false === strpos( $error, 'model' ) ) {
+            return false;
+        }
+        foreach ( array( 'not found', 'does not exist', 'not exist', 'deprecated', 'decommissioned', 'retired', 'no longer', 'invalid model', 'unknown model', 'model_not_found' ) as $needle ) {
+            if ( false !== strpos( $error, $needle ) ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Send a prompt (and optional image) to the configured provider.
+     *
+     * @param string     $prompt The prompt to send.
+     * @param array|null $image  Optional image: array( 'mime' => string, 'data' => base64 string ).
+     * @return array
+     */
+    private function wacdmg_dispatch_ai_prompt( $prompt, $image = null ) {
         if ( empty( $prompt ) ) {
             return array( 'success' => false, 'error' => 'Prompt is required.' );
         }
@@ -1490,33 +1803,33 @@ class WACDMG_Admin_API {
         $other_provider = apply_filters( 'wacdmg_use_additional_provider', false );
         if ( $other_provider ) {
             $default = array( 'success' => false, 'error' => 'Other provider not implemented.' );
-            return apply_filters( 'wacdmg_handle_ai_prompt_other', $default, $prompt, $aiCred );
+            return apply_filters( 'wacdmg_handle_ai_prompt_other', $default, $prompt, $aiCred, $image );
         }
 
         switch ( $provider ) {
             case 'chatgpt':
                 $api_key = $aiCred['chatgpt_key'] ?? ( $aiCred['apiKey'] ?? '' );
-                return $this->wacdmg_handle_ai_prompt_chatgpt( $prompt, $api_key, $model ?: 'gpt-4o' );
+                return $this->wacdmg_handle_ai_prompt_chatgpt( $prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'chatgpt' ), $image );
 
             case 'groq':
                 $api_key = $aiCred['groq_key'] ?? '';
-                return $this->wacdmg_handle_ai_prompt_groq( $prompt, $api_key, $model ?: 'llama-3.3-70b-versatile' );
+                return $this->wacdmg_handle_ai_prompt_groq( $prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'groq' ), $image );
 
             case 'gemini':
                 $api_key = $aiCred['gemini_key'] ?? '';
-                return $this->wacdmg_handle_ai_prompt_gemini( $prompt, $api_key, $model ?: 'gemini-3.5-flash' );
+                return $this->wacdmg_handle_ai_prompt_gemini( $prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'gemini' ), $image );
 
             case 'claude':
                 $api_key = $aiCred['claude_key'] ?? '';
-                return $this->wacdmg_handle_ai_prompt_claude( $prompt, $api_key, $model ?: 'claude-sonnet-4-6' );
+                return $this->wacdmg_handle_ai_prompt_claude( $prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'claude' ), $image );
 
             case 'mistral':
                 $api_key = $aiCred['mistral_key'] ?? '';
-                return $this->wacdmg_handle_ai_prompt_mistral( $prompt, $api_key, $model ?: 'mistral-large-latest' );
+                return $this->wacdmg_handle_ai_prompt_mistral( $prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'mistral' ), $image );
 
             case 'openrouter':
                 $api_key = $aiCred['openrouter_key'] ?? '';
-                return $this->wacdmg_handle_ai_prompt_openrouter( $prompt, $api_key, $model ?: 'openai/gpt-4o' );
+                return $this->wacdmg_handle_ai_prompt_openrouter( $prompt, $api_key, $model ?: $this->wacdmg_default_text_model( 'openrouter' ), $image );
 
             default:
                 return array( 'success' => false, 'error' => 'Unsupported AI provider: ' . esc_html( $provider ) );
@@ -1528,6 +1841,71 @@ class WACDMG_Admin_API {
     // =========================================================================
 
     /**
+     * User message content for OpenAI-compatible APIs (OpenAI, Groq, Mistral, OpenRouter).
+     *
+     * @param string     $prompt Prompt text.
+     * @param array|null $image  Optional image: array( 'mime', 'data' ).
+     * @return string|array
+     */
+    private function wacdmg_openai_user_content( $prompt, $image = null ) {
+        if ( empty( $image['data'] ) ) {
+            return $prompt;
+        }
+        return array(
+            array( 'type' => 'text', 'text' => $prompt ),
+            array(
+                'type'      => 'image_url',
+                'image_url' => array( 'url' => 'data:' . $image['mime'] . ';base64,' . $image['data'] ),
+            ),
+        );
+    }
+
+    /**
+     * User message content for the Anthropic Messages API.
+     *
+     * @param string     $prompt Prompt text.
+     * @param array|null $image  Optional image: array( 'mime', 'data' ).
+     * @return string|array
+     */
+    private function wacdmg_claude_user_content( $prompt, $image = null ) {
+        if ( empty( $image['data'] ) ) {
+            return $prompt;
+        }
+        return array(
+            array(
+                'type'   => 'image',
+                'source' => array(
+                    'type'       => 'base64',
+                    'media_type' => $image['mime'],
+                    'data'       => $image['data'],
+                ),
+            ),
+            array( 'type' => 'text', 'text' => $prompt ),
+        );
+    }
+
+    /**
+     * Content parts for the Gemini generateContent API.
+     *
+     * @param string     $prompt Prompt text.
+     * @param array|null $image  Optional image: array( 'mime', 'data' ).
+     * @return array
+     */
+    private function wacdmg_gemini_user_parts( $prompt, $image = null ) {
+        $parts = array();
+        if ( ! empty( $image['data'] ) ) {
+            $parts[] = array(
+                'inline_data' => array(
+                    'mime_type' => $image['mime'],
+                    'data'      => $image['data'],
+                ),
+            );
+        }
+        $parts[] = array( 'text' => $prompt );
+        return $parts;
+    }
+
+    /**
      * Handle AI prompt via OpenAI ChatGPT
      *
      * @param string $prompt  The prompt text.
@@ -1535,7 +1913,7 @@ class WACDMG_Admin_API {
      * @param string $model   Model identifier.
      * @return array
      */
-    private function wacdmg_handle_ai_prompt_chatgpt( $prompt, $api_key, $model = 'gpt-4o' ) {
+    private function wacdmg_handle_ai_prompt_chatgpt( $prompt, $api_key, $model = '', $image = null ) {
         if ( empty( $api_key ) ) {
             return array( 'success' => false, 'error' => 'OpenAI API key is missing.' );
         }
@@ -1549,7 +1927,7 @@ class WACDMG_Admin_API {
                 'model'    => $model,
                 'messages' => array(
                     array( 'role' => 'system', 'content' => 'You are a professional WordPress content writer and SEO expert. Always follow user instructions precisely.' ),
-                    array( 'role' => 'user', 'content' => $prompt ),
+                    array( 'role' => 'user', 'content' => $this->wacdmg_openai_user_content( $prompt, $image ) ),
                 ),
             ) ),
             'timeout' => 60,
@@ -1566,7 +1944,7 @@ class WACDMG_Admin_API {
      * @param string $model   Model identifier.
      * @return array
      */
-    private function wacdmg_handle_ai_prompt_groq( $prompt, $api_key, $model = 'llama-3.3-70b-versatile' ) {
+    private function wacdmg_handle_ai_prompt_groq( $prompt, $api_key, $model = '', $image = null ) {
         if ( empty( $api_key ) ) {
             return array( 'success' => false, 'error' => 'Groq API key is missing.' );
         }
@@ -1580,7 +1958,7 @@ class WACDMG_Admin_API {
                 'model'    => $model,
                 'messages' => array(
                     array( 'role' => 'system', 'content' => 'You are a professional WordPress content writer and SEO expert. Always follow user instructions precisely.' ),
-                    array( 'role' => 'user', 'content' => $prompt ),
+                    array( 'role' => 'user', 'content' => $this->wacdmg_openai_user_content( $prompt, $image ) ),
                 ),
             ) ),
             'timeout' => 60,
@@ -1597,20 +1975,24 @@ class WACDMG_Admin_API {
      * @param string $model   Model identifier.
      * @return array
      */
-    private function wacdmg_handle_ai_prompt_gemini( $prompt, $api_key, $model = 'gemini-3.5-flash' ) {
+    private function wacdmg_handle_ai_prompt_gemini( $prompt, $api_key, $model = '', $image = null ) {
         if ( empty( $api_key ) ) {
             return array( 'success' => false, 'error' => 'Google Gemini API key is missing.' );
         }
 
-        $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$api_key}";
+        // The key goes in a header, not the URL, so it never appears in proxy or debug logs.
+        $endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode( $model ) . ':generateContent';
 
         $response = wp_remote_post( $endpoint, array(
-            'headers' => array( 'Content-Type' => 'application/json' ),
+            'headers' => array(
+                'Content-Type'   => 'application/json',
+                'x-goog-api-key' => $api_key,
+            ),
             'body'    => json_encode( array(
                 'contents'         => array(
                     array(
                         'role'  => 'user',
-                        'parts' => array( array( 'text' => $prompt ) ),
+                        'parts' => $this->wacdmg_gemini_user_parts( $prompt, $image ),
                     ),
                 ),
                 'systemInstruction' => array(
@@ -1651,7 +2033,7 @@ class WACDMG_Admin_API {
      * @param string $model   Model identifier.
      * @return array
      */
-    private function wacdmg_handle_ai_prompt_claude( $prompt, $api_key, $model = 'claude-sonnet-4-6' ) {
+    private function wacdmg_handle_ai_prompt_claude( $prompt, $api_key, $model = '', $image = null ) {
         if ( empty( $api_key ) ) {
             return array( 'success' => false, 'error' => 'Anthropic Claude API key is missing.' );
         }
@@ -1667,7 +2049,7 @@ class WACDMG_Admin_API {
                 'max_tokens' => 2048,
                 'system'     => 'You are a professional WordPress content writer and SEO expert. Always follow user instructions precisely.',
                 'messages'   => array(
-                    array( 'role' => 'user', 'content' => $prompt ),
+                    array( 'role' => 'user', 'content' => $this->wacdmg_claude_user_content( $prompt, $image ) ),
                 ),
             ) ),
             'timeout' => 60,
@@ -1700,7 +2082,7 @@ class WACDMG_Admin_API {
      * @param string $model   Model identifier.
      * @return array
      */
-    private function wacdmg_handle_ai_prompt_mistral( $prompt, $api_key, $model = 'mistral-large-latest' ) {
+    private function wacdmg_handle_ai_prompt_mistral( $prompt, $api_key, $model = '', $image = null ) {
         if ( empty( $api_key ) ) {
             return array( 'success' => false, 'error' => 'Mistral API key is missing.' );
         }
@@ -1714,7 +2096,7 @@ class WACDMG_Admin_API {
                 'model'    => $model,
                 'messages' => array(
                     array( 'role' => 'system', 'content' => 'You are a professional WordPress content writer and SEO expert. Always follow user instructions precisely.' ),
-                    array( 'role' => 'user', 'content' => $prompt ),
+                    array( 'role' => 'user', 'content' => $this->wacdmg_openai_user_content( $prompt, $image ) ),
                 ),
             ) ),
             'timeout' => 60,
@@ -1728,35 +2110,42 @@ class WACDMG_Admin_API {
     // =========================================================================
 
     /**
-     * Generate image via OpenAI DALL-E 3
+     * Generate an image with an OpenAI GPT Image model.
+     *
+     * GPT Image models return base64 image data rather than a URL.
      *
      * @param string $prompt  The image prompt.
      * @param string $api_key OpenAI API key.
-     * @param string $size    Image size (e.g. '1024x1024').
-     * @param string $quality Image quality ('standard' or 'hd').
-     * @param string $style   Image style ('vivid' or 'natural').
-     * @return array
+     * @param string $model   Image model ID (e.g. 'gpt-image-2').
+     * @param string $size    1024x1024, 1536x1024 or 1024x1536.
+     * @param string $quality low, medium or high.
+     * @return array { success, data?: binary string, mime?: string, url?: string, revised_prompt?: string, error?: string }
      */
-    private function wacdmg_generate_image_dalle( $prompt, $api_key, $size = '1024x1024', $quality = 'standard', $style = 'vivid' ) {
+    private function wacdmg_generate_image_openai( $prompt, $api_key, $model, $size = '1024x1024', $quality = 'medium' ) {
         if ( empty( $api_key ) ) {
             return array( 'success' => false, 'error' => 'OpenAI API key is missing.' );
         }
+
+        /**
+         * Filter the OpenAI image model used for generation.
+         *
+         * @param string $model Model ID from Settings.
+         */
+        $model = (string) apply_filters( 'wacdmg_openai_image_model', $model );
 
         $response = wp_remote_post( 'https://api.openai.com/v1/images/generations', array(
             'headers' => array(
                 'Authorization' => 'Bearer ' . $api_key,
                 'Content-Type'  => 'application/json',
             ),
-            'body'    => json_encode( array(
-                'model'           => 'dall-e-3',
-                'prompt'          => $prompt,
-                'n'               => 1,
-                'size'            => $size,
-                'quality'         => $quality,
-                'style'           => $style,
-                'response_format' => 'url',
+            'body'    => wp_json_encode( array(
+                'model'   => $model,
+                'prompt'  => $prompt,
+                'n'       => 1,
+                'size'    => $size,
+                'quality' => $quality,
             ) ),
-            'timeout' => 120,
+            'timeout' => 180,
         ) );
 
         if ( is_wp_error( $response ) ) {
@@ -1767,7 +2156,26 @@ class WACDMG_Admin_API {
         $body = wp_remote_retrieve_body( $response );
         $data = json_decode( $body, true );
 
-        if ( $code === 200 && isset( $data['data'][0]['url'] ) ) {
+        if ( 200 === $code && ! empty( $data['data'][0]['b64_json'] ) ) {
+            $binary = base64_decode( $data['data'][0]['b64_json'], true );
+            if ( false === $binary || '' === $binary ) {
+                return array( 'success' => false, 'error' => 'The image provider returned invalid image data.' );
+            }
+            $formats = array(
+                'png'  => 'image/png',
+                'jpeg' => 'image/jpeg',
+                'webp' => 'image/webp',
+            );
+            $format = isset( $data['output_format'] ) ? strtolower( (string) $data['output_format'] ) : 'png';
+            return array(
+                'success'        => true,
+                'data'           => $binary,
+                'mime'           => $formats[ $format ] ?? 'image/png',
+                'revised_prompt' => $data['data'][0]['revised_prompt'] ?? '',
+            );
+        }
+
+        if ( 200 === $code && ! empty( $data['data'][0]['url'] ) ) {
             return array(
                 'success'        => true,
                 'url'            => $data['data'][0]['url'],
@@ -1787,7 +2195,7 @@ class WACDMG_Admin_API {
      * @param string $size    Image size (e.g. '1024x1024').
      * @return array
      */
-    private function wacdmg_generate_image_together( $prompt, $api_key, $size = '1024x1024' ) {
+    private function wacdmg_generate_image_together( $prompt, $api_key, $size = '1024x1024', $model = self::DEFAULT_TOGETHER_IMAGE_MODEL ) {
         if ( empty( $api_key ) ) {
             return array( 'success' => false, 'error' => 'Together.ai API key is missing.' );
         }
@@ -1797,17 +2205,23 @@ class WACDMG_Admin_API {
         $width  = intval( $dimensions[0] ?? 1024 );
         $height = intval( $dimensions[1] ?? 1024 );
 
+        /**
+         * Filter the Together.ai image model.
+         *
+         * @param string $model Model ID.
+         */
+        $model = (string) apply_filters( 'wacdmg_together_image_model', $model );
+
         $response = wp_remote_post( 'https://api.together.xyz/v1/images/generations', array(
             'headers' => array(
                 'Authorization' => 'Bearer ' . $api_key,
                 'Content-Type'  => 'application/json',
             ),
             'body'    => json_encode( array(
-                'model'  => 'black-forest-labs/FLUX.1-schnell-Free',
+                'model'  => $model,
                 'prompt' => $prompt,
                 'width'  => $width,
                 'height' => $height,
-                'steps'  => 4,
                 'n'      => 1,
             ) ),
             'timeout' => 120,
@@ -1821,7 +2235,18 @@ class WACDMG_Admin_API {
         $body = wp_remote_retrieve_body( $response );
         $data = json_decode( $body, true );
 
-        if ( $code === 200 && isset( $data['data'][0]['url'] ) ) {
+        if ( 200 === $code && ! empty( $data['data'][0]['b64_json'] ) ) {
+            $binary = base64_decode( $data['data'][0]['b64_json'], true );
+            if ( false !== $binary && '' !== $binary ) {
+                return array(
+                    'success' => true,
+                    'data'    => $binary,
+                    'mime'    => 'image/png',
+                );
+            }
+        }
+
+        if ( 200 === $code && ! empty( $data['data'][0]['url'] ) ) {
             return array(
                 'success' => true,
                 'url'     => $data['data'][0]['url'],
@@ -2057,88 +2482,182 @@ class WACDMG_Admin_API {
     }
 
     /**
-     * Auto-generate SEO meta when a post is first published and meta is empty.
+     * Post types that auto-SEO may run on.
+     *
+     * Defaults to public, front-end-viewable types (posts, pages, products, public CPTs).
+     * Internal types such as menu items, reusable blocks, navigation, and templates are excluded.
+     *
+     * @return string[]
+     */
+    private function wacdmg_get_auto_seo_post_types() {
+        $types = array();
+        foreach ( get_post_types( array( 'public' => true ), 'names' ) as $type ) {
+            if ( 'attachment' !== $type && is_post_type_viewable( $type ) ) {
+                $types[] = $type;
+            }
+        }
+
+        /**
+         * Filter the post types that get SEO meta generated automatically on publish.
+         *
+         * @param string[] $types Post type slugs.
+         */
+        return (array) apply_filters( 'wacdmg_auto_seo_post_types', $types );
+    }
+
+    /**
+     * Whether a post is eligible for auto-SEO right now.
+     *
+     * @param WP_Post $post Post object.
+     * @return bool
+     */
+    private function wacdmg_auto_seo_is_eligible( $post ) {
+        if ( ! $post instanceof WP_Post || 'publish' !== $post->post_status || '' === trim( $post->post_title ) ) {
+            return false;
+        }
+        if ( ! in_array( $post->post_type, $this->wacdmg_get_auto_seo_post_types(), true ) ) {
+            return false;
+        }
+        $creds = get_option( 'wacdmg_ai_creds', array() );
+        if ( empty( $creds['auto_seo_on_publish'] ) || ! class_exists( 'WACDMG_SEO' ) ) {
+            return false;
+        }
+        $existing = ( new WACDMG_SEO() )->wacdmg_get_existing_seo_meta( $post->ID );
+        return empty( $existing['seo_title'] ) && empty( $existing['meta_description'] );
+    }
+
+    /**
+     * Queue SEO meta generation when a post is first published and its meta is empty.
+     *
+     * Runs in the background (Action Scheduler when available, otherwise WP-Cron)
+     * so publishing never waits on the AI provider.
      *
      * @param string  $new_status New post status.
      * @param string  $old_status Previous post status.
      * @param WP_Post $post       Post object.
      */
     public function wacdmg_auto_seo_on_publish( $new_status, $old_status, $post ) {
-        static $running = false;
-        if ( $running ) {
-            return;
-        }
         if ( 'publish' !== $new_status || 'publish' === $old_status ) {
             return;
         }
-        if ( ! $post instanceof WP_Post ) {
+        if ( ! $post instanceof WP_Post || wp_is_post_autosave( $post->ID ) || wp_is_post_revision( $post->ID ) ) {
             return;
         }
-        if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-            return;
-        }
-        if ( wp_is_post_autosave( $post->ID ) || wp_is_post_revision( $post->ID ) ) {
-            return;
-        }
-        if ( empty( $post->post_title ) ) {
-            return;
-        }
-        if ( ! current_user_can( 'edit_post', $post->ID ) ) {
+        if ( ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) || ( defined( 'WP_IMPORTING' ) && WP_IMPORTING ) ) {
             return;
         }
 
-        $creds = get_option( 'wacdmg_ai_creds', array() );
-        if ( empty( $creds['auto_seo_on_publish'] ) ) {
-            return;
-        }
-        if ( $this->wacdmg_is_over_daily_limit() ) {
-            return;
-        }
-        if ( ! class_exists( 'WACDMG_SEO' ) ) {
+        // The status is not saved yet during this hook, so check eligibility without it.
+        $check              = clone $post;
+        $check->post_status = 'publish';
+        if ( ! $this->wacdmg_auto_seo_is_eligible( $check ) ) {
             return;
         }
 
-        $seo      = new WACDMG_SEO();
-        $existing = $seo->wacdmg_get_existing_seo_meta( $post->ID );
-        if ( ! empty( $existing['seo_title'] ) || ! empty( $existing['meta_description'] ) ) {
+        // Run the job as the publishing user; scheduled posts publish from cron, so fall back to the author.
+        $user_id = get_current_user_id();
+        if ( ! $user_id || ! user_can( $user_id, 'edit_post', $post->ID ) ) {
+            $user_id = (int) $post->post_author;
+        }
+        if ( ! $user_id || ! user_can( $user_id, 'edit_post', $post->ID ) ) {
             return;
         }
 
-        $running = true;
+        $args = array( (int) $post->ID, $user_id );
 
-        $title   = $post->post_title;
-        $excerpt = wp_strip_all_tags( $post->post_excerpt ? $post->post_excerpt : $post->post_content );
-        $excerpt = wp_trim_words( $excerpt, 80, '' );
-
-        $title_prompt = 'Write an SEO meta title for: "' . $title . '". Under 60 characters. Return only the meta title as plain text.';
-        $desc_prompt  = 'Write an SEO meta description for a page titled: "' . $title . '". Content preview: "' . $excerpt . '". 140-160 characters. Return only the meta description as plain text.';
-        $kw_prompt    = 'Suggest 3-5 focus keywords for a page titled: "' . $title . '". Return only a comma-separated list.';
-
-        $results     = array();
-        $any_success = false;
-
-        $r = $this->wacdmg_run_ai_prompt( $title_prompt );
-        if ( $r['success'] ) {
-            $results['seo_title'] = wp_strip_all_tags( $r['description'] );
-            $any_success          = true;
-        }
-        $r = $this->wacdmg_run_ai_prompt( $desc_prompt );
-        if ( $r['success'] ) {
-            $results['meta_description'] = wp_strip_all_tags( $r['description'] );
-            $any_success                 = true;
-        }
-        $r = $this->wacdmg_run_ai_prompt( $kw_prompt );
-        if ( $r['success'] ) {
-            $results['focus_keywords'] = wp_strip_all_tags( $r['description'] );
-            $any_success               = true;
+        if ( function_exists( 'as_enqueue_async_action' ) ) {
+            if ( ! function_exists( 'as_has_scheduled_action' ) || ! as_has_scheduled_action( 'wacdmg_auto_seo_job', $args, 'wacdmg' ) ) {
+                as_enqueue_async_action( 'wacdmg_auto_seo_job', $args, 'wacdmg' );
+            }
+            return;
         }
 
-        if ( $any_success ) {
-            $seo->wacdmg_write_seo_meta( $post->ID, $results );
-            $this->wacdmg_log_usage( 'seo_meta' );
+        if ( ! wp_next_scheduled( 'wacdmg_auto_seo_job', $args ) ) {
+            wp_schedule_single_event( time(), 'wacdmg_auto_seo_job', $args );
+        }
+    }
+
+    /**
+     * Background job: generate and write SEO meta for one published post.
+     *
+     * @param int $post_id Post ID.
+     * @param int $user_id User the job runs as.
+     */
+    public function wacdmg_run_auto_seo_job( $post_id, $user_id ) {
+        $post_id = (int) $post_id;
+        $user_id = (int) $user_id;
+        $post    = get_post( $post_id );
+
+        if ( ! $user_id || ! user_can( $user_id, 'edit_post', $post_id ) ) {
+            return;
+        }
+        // Re-check: the post may have been unpublished, or meta filled in, since it was queued.
+        if ( ! $this->wacdmg_auto_seo_is_eligible( $post ) || $this->wacdmg_is_over_daily_limit() ) {
+            return;
         }
 
-        $running = false;
+        $previous_user = get_current_user_id();
+        wp_set_current_user( $user_id );
+
+        $title   = wp_strip_all_tags( $post->post_title );
+        $content = wp_strip_all_tags( strip_shortcodes( $post->post_excerpt ? $post->post_excerpt : $post->post_content ) );
+        $content = wp_trim_words( $content, 80, '' );
+
+        $prompt = 'Write SEO meta for a web page.'
+            . "\nPage title: \"" . $title . '"'
+            . ( '' !== $content ? "\nContent preview: \"" . $content . '"' : '' )
+            . "\n\nReturn a JSON object with exactly these keys:"
+            . "\n- \"seo_title\": under 60 characters"
+            . "\n- \"meta_description\": 140-160 characters"
+            . "\n- \"focus_keywords\": 3-5 keywords as one comma-separated string"
+            . "\nWrite in the same language as the page title and content."
+            . "\nReturn only the JSON object, with no code fences or explanation.";
+
+        $result = $this->wacdmg_run_ai_prompt( $prompt );
+        if ( $result['success'] ) {
+            $meta = $this->wacdmg_parse_seo_json( $result['description'] );
+            if ( ! empty( $meta ) ) {
+                ( new WACDMG_SEO() )->wacdmg_write_seo_meta( $post_id, $meta );
+                $this->wacdmg_log_usage( 'seo_meta' );
+            }
+        }
+
+        wp_set_current_user( $previous_user );
+    }
+
+    /**
+     * Parse a JSON SEO response from the model.
+     *
+     * Tolerates code fences or text around the JSON object.
+     *
+     * @param string $raw Model output.
+     * @return array seo_title, meta_description, focus_keywords (only non-empty keys).
+     */
+    private function wacdmg_parse_seo_json( $raw ) {
+        $raw   = (string) $raw;
+        $start = strpos( $raw, '{' );
+        $end   = strrpos( $raw, '}' );
+        if ( false === $start || false === $end || $end <= $start ) {
+            return array();
+        }
+
+        $data = json_decode( substr( $raw, $start, $end - $start + 1 ), true );
+        if ( ! is_array( $data ) ) {
+            return array();
+        }
+
+        $meta = array();
+        foreach ( array( 'seo_title', 'meta_description', 'focus_keywords' ) as $key ) {
+            $value = isset( $data[ $key ] ) ? $data[ $key ] : '';
+            if ( is_array( $value ) ) {
+                $value = implode( ', ', array_filter( array_map( 'strval', $value ) ) );
+            }
+            $value = trim( wp_strip_all_tags( (string) $value ) );
+            if ( '' !== $value ) {
+                $meta[ $key ] = $value;
+            }
+        }
+        return $meta;
     }
 
     /**
@@ -2159,6 +2678,7 @@ class WACDMG_Admin_API {
             $settings = get_option( 'wacdmg_ai_creds', array() );
             switch ( $provider ) {
                 case 'chatgpt':
+                case 'openai_image':
                     $api_key = $settings['chatgpt_key'] ?? ( $settings['apiKey'] ?? '' );
                     break;
                 case 'groq':
@@ -2175,6 +2695,9 @@ class WACDMG_Admin_API {
                     break;
                 case 'openrouter':
                     $api_key = $settings['openrouter_key'] ?? '';
+                    break;
+                case 'together_image':
+                    $api_key = $settings['together_key'] ?? '';
                     break;
             }
         }
@@ -2213,18 +2736,68 @@ class WACDMG_Admin_API {
                 if ( ! is_wp_error( $response ) && wp_remote_retrieve_response_code( $response ) === 200 ) {
                     $data = json_decode( wp_remote_retrieve_body( $response ), true );
                     if ( isset( $data['data'] ) && is_array( $data['data'] ) ) {
+                        // Text-generation models only: skip image, audio, speech, embedding, and moderation models.
+                        $excluded = array( 'embed', 'moderation', 'realtime', 'audio', 'image', 'tts', 'transcribe', 'whisper', 'dall-e', 'search' );
                         foreach ( $data['data'] as $m ) {
-                            $id = $m['id'];
-                            // Filter chat/reasoning models
-                            if ( ( strpos( $id, 'gpt-' ) !== false || strpos( $id, 'o1-' ) !== false || strpos( $id, 'o3-' ) !== false || $id === 'o1' ) 
-                                 && strpos( $id, 'embed' ) === false 
-                                 && strpos( $id, 'moderation' ) === false 
-                                 && strpos( $id, 'realtime' ) === false 
-                                 && strpos( $id, 'audio' ) === false ) {
+                            $id = isset( $m['id'] ) ? (string) $m['id'] : '';
+                            if ( ! preg_match( '/^(gpt-|o\d)/', $id ) ) {
+                                continue;
+                            }
+                            foreach ( $excluded as $needle ) {
+                                if ( false !== strpos( $id, $needle ) ) {
+                                    continue 2;
+                                }
+                            }
+                            $models[] = array( 'value' => $id, 'label' => $id );
+                        }
+                        // Sort models alphabetically
+                        usort( $models, function( $a, $b ) { return strcmp( $a['label'], $b['label'] ); } );
+                    }
+                }
+                break;
+
+            case 'openai_image':
+                $response = wp_remote_get( 'https://api.openai.com/v1/models', array(
+                    'headers' => array(
+                        'Authorization' => 'Bearer ' . $api_key,
+                    ),
+                    'timeout' => 15,
+                ) );
+                if ( ! is_wp_error( $response ) && wp_remote_retrieve_response_code( $response ) === 200 ) {
+                    $data = json_decode( wp_remote_retrieve_body( $response ), true );
+                    if ( isset( $data['data'] ) && is_array( $data['data'] ) ) {
+                        foreach ( $data['data'] as $m ) {
+                            $id = isset( $m['id'] ) ? (string) $m['id'] : '';
+                            if ( 0 === strpos( $id, 'gpt-image' ) ) {
                                 $models[] = array( 'value' => $id, 'label' => $id );
                             }
                         }
-                        // Sort models alphabetically
+                        usort( $models, function( $a, $b ) { return strcmp( $b['label'], $a['label'] ); } );
+                    }
+                }
+                break;
+
+            case 'together_image':
+                $response = wp_remote_get( 'https://api.together.xyz/v1/models', array(
+                    'headers' => array(
+                        'Authorization' => 'Bearer ' . $api_key,
+                    ),
+                    'timeout' => 15,
+                ) );
+                if ( ! is_wp_error( $response ) && wp_remote_retrieve_response_code( $response ) === 200 ) {
+                    $data = json_decode( wp_remote_retrieve_body( $response ), true );
+                    // Together returns a plain array; tolerate an OpenAI-style { data: [] } wrapper too.
+                    $list = ( is_array( $data ) && isset( $data['data'] ) && is_array( $data['data'] ) ) ? $data['data'] : $data;
+                    if ( is_array( $list ) ) {
+                        foreach ( $list as $m ) {
+                            if ( ! is_array( $m ) || empty( $m['id'] ) || ( $m['type'] ?? '' ) !== 'image' ) {
+                                continue;
+                            }
+                            $models[] = array(
+                                'value' => (string) $m['id'],
+                                'label' => ! empty( $m['display_name'] ) ? (string) $m['display_name'] : (string) $m['id'],
+                            );
+                        }
                         usort( $models, function( $a, $b ) { return strcmp( $a['label'], $b['label'] ); } );
                     }
                 }
@@ -2252,8 +2825,10 @@ class WACDMG_Admin_API {
                 break;
 
             case 'gemini':
-                $url = "https://generativelanguage.googleapis.com/v1beta/models?key=" . urlencode( $api_key );
-                $response = wp_remote_get( $url, array( 'timeout' => 15 ) );
+                $response = wp_remote_get( 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000', array(
+                    'headers' => array( 'x-goog-api-key' => $api_key ),
+                    'timeout' => 15,
+                ) );
                 if ( ! is_wp_error( $response ) && wp_remote_retrieve_response_code( $response ) === 200 ) {
                     $data = json_decode( wp_remote_retrieve_body( $response ), true );
                     if ( isset( $data['models'] ) && is_array( $data['models'] ) ) {
@@ -2344,7 +2919,7 @@ class WACDMG_Admin_API {
      * @param string $model   Model identifier.
      * @return array
      */
-    private function wacdmg_handle_ai_prompt_openrouter( $prompt, $api_key, $model = 'openai/gpt-4o' ) {
+    private function wacdmg_handle_ai_prompt_openrouter( $prompt, $api_key, $model = '', $image = null ) {
         if ( empty( $api_key ) ) {
             return array( 'success' => false, 'error' => 'OpenRouter API key is missing.' );
         }
@@ -2360,7 +2935,7 @@ class WACDMG_Admin_API {
                 'model'    => $model,
                 'messages' => array(
                     array( 'role' => 'system', 'content' => 'You are a professional WordPress content writer and SEO expert. Always follow user instructions precisely.' ),
-                    array( 'role' => 'user', 'content' => $prompt ),
+                    array( 'role' => 'user', 'content' => $this->wacdmg_openai_user_content( $prompt, $image ) ),
                 ),
             ) ),
             'timeout' => 60,
