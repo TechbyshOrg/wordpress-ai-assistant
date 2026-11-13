@@ -556,7 +556,7 @@ const Settings = () => {
                         </div>
 
                         <div className="wacdmg-notice wacdmg-notice-info">
-                            AI SEO meta generation is available in the Gutenberg Document panel and on WooCommerce product edit pages.
+                            Generate SEO meta from the block editor sidebar, the classic editor, WooCommerce product pages, and category edit screens.
                         </div>
                     </div>
                 )}

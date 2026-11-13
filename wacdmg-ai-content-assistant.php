@@ -1,12 +1,13 @@
 <?php
 /**
- * Plugin Name: AI Content & Meta Assistant
+ * Plugin Name: AI Product Descriptions & SEO Meta for WooCommerce
  * Plugin URI: https://wordpress.org/plugins/wacdmg-ai-content-assistant/
- * Description: AI writer for WordPress and WooCommerce. Generate product descriptions, SEO meta, blog content, and images with ChatGPT, Gemini, or Claude.
+ * Description: Write WooCommerce product descriptions, SEO meta, and image alt text with AI. Use your own ChatGPT, Claude, or Gemini API key.
  * Version: 2.1.1
  * Requires at least: 6.0
  * Tested up to: 7.1
  * Requires PHP: 7.4
+ * WC tested up to: 11.1
  * Author: Techbysh
  * Author URI: https://techbysh.com
  * License: GPLv2 or later

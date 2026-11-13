@@ -1,0 +1,238 @@
+SEO & CONTENT PLAN — AI Product Descriptions & SEO Meta for WooCommerce
+(slug: wacdmg-ai-content-assistant)
+Internal planning document. Not deployed (listed in .distignore).
+Prepared: 2026-11-13. Demand/competition values are ESTIMATES, not measured data.
+
+======================================================================
+1. POSITIONING
+======================================================================
+
+One-sentence definition (use everywhere):
+  A free AI writing assistant for WordPress that writes WooCommerce product
+  descriptions, SEO titles and meta descriptions, and image alt text, using your
+  own OpenAI, Anthropic, Google, Mistral, Groq, or OpenRouter API key.
+
+Differentiators (all verified in code):
+  - Product copy + SEO meta + alt text in one plugin.
+  - 6 text providers with your own key; no subscription, no Pro upsell.
+  - Free Bulk Fill (up to 20 products) that never overwrites existing text.
+  - Writes into Yoast SEO, Rank Math, AIOSEO, and SEOPress.
+  - Alt text written from the image itself (vision models).
+  - Auto SEO meta on publish, in the background.
+  - ACF, Meta Box, Elementor, WPML, Polylang support.
+  - Loads nothing on the public site.
+
+======================================================================
+2. KEYWORDS
+======================================================================
+
+Primary keyword:
+  AI product description generator (WooCommerce context)
+  Demand: Medium-High | Competition: Medium (competitors are mostly new, small plugins)
+
+Secondary keywords:
+  AI meta description generator ........ Demand Medium | Competition Medium
+  AI alt text generator ................. Demand Medium | Competition Medium-High
+  AI content writer for WordPress ....... Demand High   | Competition High
+  ChatGPT for WooCommerce ............... Demand Medium | Competition Medium
+
+Problem keywords: write product descriptions faster, fill empty product
+descriptions, add alt text to images, write meta descriptions, improve product SEO.
+
+Solution keywords: AI product description plugin, AI writer WordPress, ChatGPT
+WordPress plugin, AI SEO plugin, bring your own API key AI plugin.
+
+Feature keywords: bulk product descriptions, AI alt text, Yoast AI meta description,
+Rank Math AI meta, AI image generator WordPress, Claude WordPress, Gemini WordPress.
+
+Long-tail questions (for FAQ, blog, docs, and AI-search answers):
+  1. How do I write WooCommerce product descriptions with ChatGPT?
+  2. How do I bulk generate product descriptions in WooCommerce?
+  3. What is a free AI product description generator for WooCommerce?
+  4. How can I use my own OpenAI API key in WordPress?
+  5. How do I generate meta descriptions with AI for Yoast SEO?
+  6. How do I write Rank Math meta descriptions with AI?
+  7. How do I add alt text to all WooCommerce product images?
+  8. Can AI write image alt text in WordPress automatically?
+  9. Is there an AI writer for WordPress without a subscription?
+ 10. How do I use Claude in WordPress?
+ 11. How do I use Google Gemini in WordPress?
+ 12. How do I fill empty product descriptions in WooCommerce?
+ 13. How do I write product descriptions in another language with AI?
+ 14. How do I add AI to ACF fields?
+ 15. How do I use AI in the Elementor editor?
+ 16. How do I write category descriptions for WooCommerce with AI?
+ 17. How much does it cost to generate product descriptions with OpenAI?
+ 18. How do I generate a featured image with AI in WordPress?
+ 19. Will an AI plugin slow down my WooCommerce store?
+ 20. How do I write SEO titles for products automatically?
+
+Search intent:
+  - Problem/how-to queries want a step-by-step answer -> blog and docs tutorials.
+  - Solution queries compare plugins -> clear readme, honest "what it does not do".
+  - Feature queries want proof the feature exists -> feature headings + screenshots.
+
+======================================================================
+3. WORDPRESS.ORG TAGS (max 5)
+======================================================================
+
+  ai, product description, meta description, alt text, chatgpt
+
+  - ai: core category term; every searcher uses it.
+  - product description: the primary keyword; winnable.
+  - meta description: specific SEO term; less crowded than "seo".
+  - alt text: a strong, distinct feature; accessibility searches.
+  - chatgpt: what people actually type (more than "openai").
+  Dropped: woocommerce (huge tag; name already covers it), seo (dominated by
+  large SEO plugins), openai (duplicate of chatgpt in intent).
+
+======================================================================
+4. COMPETITOR NOTES (wordpress.org, checked 2026-11-13)
+======================================================================
+
+  RankHigh, WebGears AI Product Descriptions, IntelliDesc, DesignGrid,
+  ProdScribe AI, MyStoreForge:
+    Name pattern "AI Product Description(s) ... for WooCommerce". Mostly OpenAI
+    only; bulk often in Pro; highlight tones and languages.
+  Quickify AI: vision from product images, rollback history.
+  WP Wand, CloudScale SEO AI Optimizer: bring-your-own-key, "no subscription".
+  AutoAlt.ai, Auto Alt Text, AI Auto Alt Text Generator: alt-text specialists,
+  "on upload" and bulk library processing.
+
+Content gaps closed in this rewrite: no-subscription message up front, 3-step
+"How it works", use cases, image-based alt text, auto SEO on publish, block list,
+"what it does not do", front-end performance, data and uninstall FAQs.
+
+Feature gaps vs competitors (product work, not content): alt text on upload,
+bulk Media Library alt text, rollback history, more than 20 products per batch.
+
+======================================================================
+5. BLOG AND DOCS TOPICS
+======================================================================
+
+ 1. How to write WooCommerce product descriptions with AI (step by step)
+    Keyword: AI product description generator | Intent: how-to
+    Outline: set up key, generate one product, review, tips for better prompts.
+ 2. Bulk-fill empty WooCommerce product descriptions safely
+    Keyword: bulk product descriptions | Intent: how-to
+    Outline: select products, review checkboxes, why existing text is kept.
+ 3. Generate Yoast SEO meta descriptions with AI
+    Keyword: Yoast AI meta description | Intent: how-to
+    Outline: connect, generate in the editor, check the Yoast snippet preview.
+ 4. Generate Rank Math titles and descriptions with AI
+    Keyword: Rank Math AI meta | Intent: how-to
+ 5. AI alt text for WooCommerce product images: a practical guide
+    Keyword: AI alt text generator | Intent: how-to + accessibility
+    Outline: why alt text matters, vision models, reviewing results.
+ 6. Use your own OpenAI, Claude, or Gemini key in WordPress
+    Keyword: bring your own API key WordPress | Intent: setup
+ 7. ChatGPT vs Claude vs Gemini for product descriptions: how to choose
+    Keyword: best AI for product descriptions | Intent: comparison
+    Outline: speed, cost factors, languages; no fabricated benchmarks.
+ 8. How much does AI content cost per product? Controlling spend in WordPress
+    Keyword: OpenAI cost product descriptions | Intent: cost
+    Outline: pay-per-use model, daily limit, usage log. Link to provider pricing.
+ 9. Auto-generate SEO meta when you publish in WordPress
+    Keyword: automatic meta description WordPress | Intent: how-to
+10. Write category descriptions for WooCommerce with AI
+    Keyword: WooCommerce category description | Intent: how-to
+11. Add AI to ACF and Meta Box fields
+    Keyword: ACF AI | Intent: developer how-to
+12. Use AI inside the Elementor editor
+    Keyword: Elementor AI writer | Intent: how-to
+13. Translate product content with AI and WPML or Polylang
+    Keyword: AI translate WooCommerce products | Intent: how-to
+14. Generate product and featured images with GPT Image and FLUX
+    Keyword: AI image generator WordPress | Intent: how-to
+15. Does an AI plugin slow down WooCommerce? (no front-end assets explained)
+    Keyword: AI plugin performance | Intent: objection
+
+======================================================================
+6. SCREENSHOTS TO CAPTURE (highest impact first)
+======================================================================
+
+Retake (they show the retired "DALL-E 3" option):
+  - screenshot-1 (AI Provider settings): Groq card text and models changed.
+  - screenshot-2 (Image Generation settings): now GPT Image model picker.
+  - screenshot-5 (AI Image Generator): Style dropdown removed, new sizes.
+
+Add (most persuasive; currently missing):
+  - Classic WooCommerce product editor with the AI assistant and a generated
+    description preview.
+  - Block editor with the AI SEO panel filled in.
+  - Bulk Fill review screen with checkboxes.
+  - Media Library with "Generate with AI" alt text filled in.
+  - Rank Math or Yoast snippet preview showing AI-written meta.
+When adding, renumber files and keep == Screenshots == captions in the same order.
+
+======================================================================
+7. BANNER AND ICON MESSAGE IDEAS
+======================================================================
+
+Banner (1544x500 and 772x250):
+  Headline: "AI product descriptions, SEO meta & alt text"
+  Subline:  "Your own ChatGPT, Claude, or Gemini key. No subscription."
+  Visual: a product card with a generated description and an SEO snippet.
+Icon: keep the current mark; ensure it reads at 128px.
+
+======================================================================
+8. STRUCTURED DATA FOR A WEBSITE PAGE (if you publish one)
+======================================================================
+
+Do not add ratings or review counts until real reviews exist.
+
+SoftwareApplication:
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "AI Product Descriptions & SEO Meta for WooCommerce",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "WordPress 6.0+",
+  "softwareVersion": "2.1.1",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "downloadUrl": "https://wordpress.org/plugins/wacdmg-ai-content-assistant/",
+  "author": { "@type": "Organization", "name": "Techbysh", "url": "https://techbysh.com" },
+  "description": "Write WooCommerce product descriptions, SEO meta, and image alt text with AI. Use your own ChatGPT, Claude, or Gemini API key."
+}
+</script>
+
+FAQPage (reuse readme FAQ answers verbatim; example with two questions):
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is it free? Is there a subscription?",
+      "acceptedAnswer": { "@type": "Answer", "text": "The plugin is free, with no Pro version and no plugin subscription. You pay your AI provider directly for the text and images you generate." }
+    },
+    {
+      "@type": "Question",
+      "name": "Will it overwrite my existing descriptions or SEO meta?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Bulk Fill only fills empty fields. A short existing description is expanded from its own text and replaces the original only if you tick it. Existing short descriptions and SEO meta are never overwritten by Bulk Fill, and auto SEO on publish only runs when a post has no SEO meta yet." }
+    }
+  ]
+}
+</script>
+
+======================================================================
+9. OPEN ITEMS (NEEDS VERIFICATION)
+======================================================================
+
+  - AIOSEO: confirm AI meta appears in AIOSEO's own fields (AIOSEO 4 stores data
+    in its own table). Listed as supported in the readme.
+  - Minimum WooCommerce version: not declared ("WC requires at least" omitted).
+  - techbysh.com/donate and techbysh.com/support returned 404 (removed from readme).
+
+======================================================================
+10. METRICS TO TRACK
+======================================================================
+
+  - wordpress.org search position for "ai product description", "product
+    description", "alt text", "meta description", "chatgpt".
+  - Active installs, downloads per day, ratings and review count.
+  - Support threads opened vs resolved.
+  - Website/blog traffic and clicks to the plugin page.
+  Recheck rankings 2-4 weeks after the readme update reaches wordpress.org.

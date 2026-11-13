@@ -49,14 +49,14 @@ class WACDMG_Admin {
         }
 
         $content = '<p class="privacy-policy-tutorial">'
-            . esc_html__( 'AI Content & Meta Assistant does not collect data from site visitors and sets no cookies. The text below describes how site staff use AI services; review it and keep only what applies to your site.', 'wacdmg-ai-content-assistant' )
+            . esc_html__( 'AI Product Descriptions & SEO Meta for WooCommerce does not collect data from site visitors and sets no cookies. The text below describes how site staff use AI services; review it and keep only what applies to your site.', 'wacdmg-ai-content-assistant' )
             . '</p>'
             . '<p><strong class="privacy-policy-tutorial">' . esc_html__( 'Suggested text:', 'wacdmg-ai-content-assistant' ) . ' </strong>'
             . esc_html__( 'We use third-party artificial intelligence (AI) services to help write and edit content on this website, such as product descriptions, page text, image descriptions, and search engine metadata. When our staff use these tools, the content being worked on (for example a product name, existing text, or an image from our media library) is sent to the AI provider we have chosen to generate a suggestion. We do not send visitor or customer personal data, such as order details, to these services. The providers we may use include OpenAI, Google (Gemini), Anthropic (Claude), Mistral AI, Groq, OpenRouter, and Together AI, each under its own privacy policy.', 'wacdmg-ai-content-assistant' )
             . '</p>';
 
         wp_add_privacy_policy_content(
-            __( 'AI Content & Meta Assistant', 'wacdmg-ai-content-assistant' ),
+            __( 'AI Product Descriptions & SEO Meta for WooCommerce', 'wacdmg-ai-content-assistant' ),
             wp_kses_post( $content )
         );
     }

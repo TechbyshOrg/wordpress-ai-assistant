@@ -1,6 +1,6 @@
 <?php
 /**
- * Uninstall cleanup for AI Content & Meta Assistant.
+ * Uninstall cleanup for AI Product Descriptions & SEO Meta for WooCommerce.
  *
  * Runs only when the plugin is deleted from the Plugins screen (not on deactivation).
  *

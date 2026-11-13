@@ -144,7 +144,7 @@ export const providerMeta = {
     groq: {
         label: 'Groq',
         color: '#f55036',
-        description: 'Lightning-fast inference with open-source models like Llama 3.3. Great free tier for getting started.',
+        description: 'Very fast responses from open models such as GPT-OSS. Good for quick drafts.',
         keyPlaceholder: 'gsk-...your-groq-key',
         docsUrl: 'https://console.groq.com/keys',
         models: groqModels,
