@@ -244,6 +244,7 @@ You can prompt it, but you should not treat generated legal, medical, or complia
 * Improvement: The block editor script is about 70% smaller (248 KB to 72 KB) after removing an unused bundled copy of React.
 * Improvement: Added suggested privacy policy text under Settings → Privacy → Policy Guide.
 * Improvement: License notices for bundled third-party code are now included in the plugin package, and the Plugin URI points to the correct WordPress.org page.
+* New: Optional deactivation feedback survey.
 
 = 2.1.0 =
 * Expanded AI writing across more WordPress and WooCommerce fields, including taxonomies, ACF, Meta Box, and Elementor.
@@ -300,6 +301,7 @@ This plugin sends prompts and related content you choose to generate (such as a 
 5. **Mistral AI API** (https://api.mistral.ai) — Mistral text models. Privacy: https://mistral.ai/terms
 6. **OpenRouter API** (https://openrouter.ai) — Unified access to many models. Privacy: https://openrouter.ai/privacy
 7. **Together.ai API** (https://api.together.xyz) — FLUX and Stable Diffusion image models. Privacy: https://www.together.ai/privacy
+8. **Google Apps Script** (https://script.google.com) — Optional deactivation feedback, sent to the plugin author (Techbysh) and stored in a Google Sheet. It is sent **only** when an administrator deactivates the plugin and clicks **Submit & Deactivate** in the feedback popup; **Skip & Deactivate** and closing the popup send nothing. It contains the chosen reason, any text typed, the plugin, WordPress, and PHP versions, the site language, whether the site is multisite, and the active theme name. The site URL and admin email are included only if the administrator ticks the opt-in checkbox. Privacy: https://policies.google.com/privacy Terms: https://policies.google.com/terms
 
 API keys remain in your WordPress database and are not shared with Techbysh.
 

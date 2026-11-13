@@ -82,6 +82,16 @@ Found while doing these:
 
 ---
 
+## Deactivation feedback survey (added in 2.1.1)
+
+- Code: `includes/class-wacdmg-deactivation-feedback.php`, `assets/js/deactivation-feedback.js`, `css/deactivation-feedback.css`. Loaded only in the admin; assets only on the Plugins screen.
+- Sends nothing unless the admin clicks **Submit & Deactivate**; site URL and admin email only with the opt-in checkbox. Disclosed in readme → External Services #8.
+- Endpoint: Google Apps Script web app (URL in `ENDPOINT_URL`), writing to the **Feedback** tab of the owner's Google Sheet. Script source: `docs/feedback-apps-script.gs` (hardened: `@OnlyCurrentDoc`, plugin/reason allow-lists, field validation, 20/min and 200/hour caps, formula-injection guard).
+- Overrides: `WACDMG_FEEDBACK_URL` / `WACDMG_FEEDBACK_TOKEN` constants; filters `wacdmg_deactivation_feedback_url`, `_token`, `_payload`.
+- The token is visible in the public plugin code — it only deters casual abuse. If spam appears, change `SECRET_TOKEN` in the class and `SECRET` in the script together.
+- Updating the script: Deploy → Manage deployments → Edit → New version (keeps the URL). A "New deployment" changes the URL.
+- Verified 2026-11-13: real submission returned `{"ok":true}`; hardened version rejects wrong tokens and unknown plugins.
+
 ## Phase 2 — NEXT (target 2.2, about 1–2 months)
 
 Ordered by impact.

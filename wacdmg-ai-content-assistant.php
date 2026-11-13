@@ -32,6 +32,12 @@ require_once WACDMG_PLUGIN_DIR . 'includes/class-wacdmg-seo.php';
 require_once WACDMG_PLUGIN_DIR . 'includes/class-wacdmg-image-ai.php';
 require_once WACDMG_PLUGIN_DIR . 'includes/class-wacdmg-field-ui.php';
 
+// Optional deactivation feedback survey (Plugins screen and its AJAX handler only).
+if ( is_admin() ) {
+    require_once WACDMG_PLUGIN_DIR . 'includes/class-wacdmg-deactivation-feedback.php';
+    WACDMG_Deactivation_Feedback::init();
+}
+
 /**
  * On deactivation, cancel queued auto-SEO jobs so they do not run while the plugin is inactive.
  * (Data cleanup on delete lives in uninstall.php.)
