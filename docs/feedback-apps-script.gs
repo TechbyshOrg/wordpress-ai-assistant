@@ -1,15 +1,19 @@
 /** @OnlyCurrentDoc */
 
 /**
- * Google Apps Script for the plugin's deactivation feedback survey (hardened version).
- * Not part of the plugin package (docs/ is excluded via .distignore).
+ * Google Apps Script for the deactivation feedback survey (hardened version).
+ * Shared by these plugins (they send to the same /exec URL and token):
+ * - AI Product Descriptions & SEO Meta (includes/class-wacdmg-deactivation-feedback.php)
+ * - WebPressor (includes/class-tbswebpressor-deactivation-feedback.php)
+ * - AI Visibility Control (includes/class-tavc-deactivation-feedback.php)
+ * Not part of either plugin package (docs/ is excluded via .distignore).
  *
  * The @OnlyCurrentDoc line above limits this script to the spreadsheet it is attached to,
  * instead of every spreadsheet in your Google account.
  *
  * Setup: Google Sheet -> Extensions -> Apps Script -> paste this -> Save ->
  * Deploy -> New deployment -> Web app (Execute as: Me, Who has access: Anyone).
- * Put the resulting /exec URL in includes/class-wacdmg-deactivation-feedback.php (ENDPOINT_URL).
+ * Put the resulting /exec URL in each plugin's deactivation feedback class (ENDPOINT_URL).
  *
  * Updating an existing deployment (keeps the same URL):
  * Deploy -> Manage deployments -> Edit (pencil) -> Version: New version -> Deploy.
@@ -17,15 +21,18 @@
  * Deployed web app (2026-11-13):
  * https://script.google.com/macros/s/AKfycbxH4AIQgQpxVqcGsIutXYaWL5Nx-Wg5AVsaLbfo2_I5MhWrjUzrK9V0Rjam5M077X7b/exec
  *
- * SECRET must match SECRET_TOKEN in includes/class-wacdmg-deactivation-feedback.php.
+ * SECRET must match SECRET_TOKEN in every plugin's deactivation feedback class.
  */
 
 const SECRET = 'RObugXJsyrGIlwX4UEpXS591iPqcrkNftrZZBoWn';
 const SHEET_NAME = 'Feedback';
 const HEADERS = ['Timestamp', 'Plugin', 'Plugin Version', 'Reason', 'Details', 'WP Version', 'PHP Version', 'Locale', 'Multisite', 'Active Theme', 'Site URL', 'Admin Email'];
 
-// Only these plugin slugs are accepted. 'wordpress-ai-assistant' is the local development folder name.
-const ALLOWED_PLUGINS = ['wacdmg-ai-content-assistant', 'wordpress-ai-assistant'];
+// Only these plugin slugs are accepted (WordPress.org slug + local development folder name of each plugin):
+// - AI Product Descriptions & SEO Meta: 'wacdmg-ai-content-assistant', 'wordpress-ai-assistant'
+// - WebPressor: 'webpressor-webp-image-converter-optimizer', 'tbs-webpressor'
+// - AI Visibility Control: 'tbsh-ai-visibility-control', 'ai-visibility-manager'
+const ALLOWED_PLUGINS = ['wacdmg-ai-content-assistant', 'wordpress-ai-assistant', 'webpressor-webp-image-converter-optimizer', 'tbs-webpressor', 'tbsh-ai-visibility-control', 'ai-visibility-manager'];
 const ALLOWED_REASONS = ['no_longer_needed', 'better_plugin', 'not_working', 'broke_site', 'missing_feature', 'too_complicated', 'temporary', 'other'];
 
 // Spam limits (shared across all senders).
